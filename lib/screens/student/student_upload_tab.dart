@@ -1,364 +1,234 @@
 import 'dart:io';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:smart_doc/services/firebase_service.dart';
-import 'package:smart_doc/services/supabase_service.dart';
-import 'package:smart_doc/widgets/message_box.dart';
+import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
-import 'package:google_mlkit_document_scanner/google_mlkit_document_scanner.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:smart_doc/services/ocr_service.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:smart_doc/utils/show_message_box.dart'; // Assuming you have this helper
 
 class StudentUploadTab extends StatefulWidget {
-  const StudentUploadTab({super.key});
+  const StudentUploadTab({Key? key}) : super(key: key);
 
   @override
-  State<StudentUploadTab> createState() => _StudentUploadTabState();
+  _StudentUploadTabState createState() => _StudentUploadTabState();
 }
 
 class _StudentUploadTabState extends State<StudentUploadTab> {
-  bool _isLoading = false;
   File? _selectedFile;
-  final FirebaseService _firebaseService = FirebaseService();
-  final SupabaseService _supabaseService = SupabaseService();
-  final ImagePicker _picker = ImagePicker();
-  final OcrService _ocrService = OcrService();
+  bool _isLoading = false;
+  String? _selectedCategory;
+  List<String> _categories = [];
 
-  Future<void> _requestPermissions() async {
-    await Permission.camera.request();
-    await Permission.photos.request();
+  @override
+  void initState() {
+    super.initState();
+    _fetchCategories();
   }
 
-  Future<File?> _startDocumentScan() async {
-    final DocumentScanner documentScanner = DocumentScanner(
-      options: DocumentScannerOptions(
-        mode: ScannerMode.full,
-        pageLimit: 1,
-      ),
-    );
-
+  Future<void> _fetchCategories() async {
     try {
-      final DocumentScanningResult result = await documentScanner.scanDocument();
-
-      if (result.images.isNotEmpty) {
-        return File(result.images.first);
+      final snapshot = await FirebaseFirestore.instance.collection('document_categories').get();
+      if (snapshot.docs.isNotEmpty) {
+        setState(() {
+          _categories = snapshot.docs.map((doc) => doc.id as String).toList();
+        });
       }
     } catch (e) {
       if (mounted) {
-        showMessageBox(context, 'Error', 'Failed to scan document: $e');
+        showMessageBox(context, 'Error', 'Failed to load categories: $e');
       }
     }
-    return null;
   }
 
-  Future<File?> _pickImage(ImageSource source) async {
-    final pickedFile = await _picker.pickImage(
-      source: source,
-      imageQuality: 50, // Compress image
-    );
+  Future<void> _pickFile() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'doc', 'docx', 'jpg', 'png'],
+      );
 
-    if (pickedFile != null) {
-      // Copy the file to a safe directory
-      final directory = await getApplicationDocumentsDirectory();
-      final newPath = '${directory.path}/${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final File savedImage = await File(pickedFile.path).copy(newPath);
-      return savedImage;
+      if (result != null && result.files.single.path != null) {
+        setState(() {
+          _selectedFile = File(result.files.single.path!);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        showMessageBox(context, 'Error', 'Failed to pick file: $e');
+      }
     }
-    return null;
   }
 
-  Future<File?> _pickPdf() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['pdf'],
-    );
-
-    if (result != null) {
-      // Copy the file to a safe directory
-      final directory = await getApplicationDocumentsDirectory();
-      final newPath = '${directory.path}/${DateTime.now().millisecondsSinceEpoch}.pdf';
-      final File savedPdf = await File(result.files.single.path!).copy(newPath);
-      return savedPdf;
+  Future<void> _uploadDocument(File file, String docName, String category) async {
+    if (FirebaseAuth.instance.currentUser == null) {
+      showMessageBox(context, 'Error', 'You must be logged in to upload.');
+      return;
     }
-    return null;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final user = FirebaseAuth.instance.currentUser!;
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}_${docName.replaceAll(' ', '_')}';
+      final storagePath = 'documents/${user.uid}/$fileName';
+
+      // 1. Upload to Firebase Storage
+      final ref = FirebaseStorage.instance.ref(storagePath);
+      final uploadTask = ref.putFile(file);
+      final snapshot = await uploadTask.whenComplete(() => null);
+      final downloadUrl = await snapshot.ref.getDownloadURL();
+
+      // 2. Get uploader's name from 'users' collection
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      final uploaderName = userDoc.data()?['name'] ?? 'Unknown User';
+
+      // 3. Save metadata to Firestore
+      await FirebaseFirestore.instance.collection('documents').add({
+        'docName': docName,
+        'docUrl': downloadUrl,
+        'category': category,
+        'uploaderId': user.uid,
+        'uploaderName': uploaderName,
+        'uploadedAt': Timestamp.now(),
+        'status': 'pending', // or any initial status
+      });
+
+      setState(() {
+        _selectedFile = null;
+      });
+
+      if (mounted) {
+        showMessageBox(context, 'Success', 'Document uploaded successfully and is pending review.');
+      }
+    } on FirebaseException catch (e) {
+      if (mounted) {
+        showMessageBox(context, 'Upload Error', e.message ?? 'An unknown error occurred.');
+      }
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
-  void _showUploadOptions() {
-    showModalBottomSheet(
+  void _showUploadDialog(File file) {
+    final nameController = TextEditingController();
+    String? dialogSelectedCategory = _categories.isNotEmpty ? _categories[0] : null;
+
+    showDialog(
       context: context,
       builder: (context) {
-        return Wrap(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt_outlined),
-              title: const Text('Scan Document'),
-              onTap: () {
-                Navigator.pop(context);
-                _pickAndUploadFile(_startDocumentScan);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('Upload from Gallery'),
-              onTap: () {
-                Navigator.pop(context);
-                _pickAndUploadFile(() => _pickImage(ImageSource.gallery));
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.picture_as_pdf_outlined),
-              title: const Text('Upload PDF'),
-              onTap: () {
-                Navigator.pop(context);
-                _pickAndUploadFile(_pickPdf);
-              },
-            ),
-          ],
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Document Details'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: nameController,
+                    decoration: const InputDecoration(labelText: 'Document Name'),
+                  ),
+                  const SizedBox(height: 20),
+                  if (_categories.isNotEmpty)
+                    DropdownButton<String>(
+                      isExpanded: true,
+                      value: dialogSelectedCategory,
+                      hint: const Text('Select Category'),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setDialogState(() {
+                            dialogSelectedCategory = value;
+                          });
+                        }
+                      },
+                      items: _categories.map<DropdownMenuItem<String>>((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(value),
+                        );
+                      }).toList(),
+                    )
+                  else
+                    const Text('Loading categories...'),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  child: const Text('Cancel'),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+                ElevatedButton(
+                  child: const Text('Upload'),
+                  onPressed: () {
+                    if (nameController.text.isNotEmpty && dialogSelectedCategory != null) {
+                      Navigator.of(context).pop();
+                      _uploadDocument(file, nameController.text, dialogSelectedCategory!);
+                    } else {
+                      showMessageBox(context, 'Error', 'Please provide a name and select a category.');
+                    }
+                  },
+                ),
+              ],
+            );
+          },
         );
       },
     );
   }
 
-
-  Future<void> _pickAndUploadFile(Future<File?> Function() pickFunction) async {
-    if (_isLoading) return;
-
-    await _requestPermissions();
-
-    try {
-      final file = await pickFunction();
-
-      if (file != null) {
-        final isImage = ['.jpg', '.jpeg', '.png'].any((ext) => file.path.toLowerCase().endsWith(ext));
-
-        if (isImage) {
-          setState(() => _isLoading = true);
-          final text = await _ocrService.processImage(file);
-          final isExpired = _ocrService.isDocumentExpired(text);
-          setState(() => _isLoading = false);
-
-          if (isExpired) {
-            if (mounted) {
-              showMessageBox(context, 'Validation Failed', 'The document appears to be expired and cannot be uploaded.');
-            }
-            return; // Stop the process
-          }
-        }
-
-        setState(() {
-          _selectedFile = file;
-        });
-
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('No file selected.')),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        showMessageBox(context, 'Error', 'Failed to pick file: $e');
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  void _showUploadDialog(File file) {
-    final TextEditingController nameController = TextEditingController();
-    String? selectedCategory;
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(builder: (context, setState) {
-          return AlertDialog(
-            title: const Text('Upload Document'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Document Name'),
-                ),
-                const SizedBox(height: 16),
-                StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance.collection('categories').orderBy('name').snapshots(),
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    if (snapshot.hasError) {
-                      return const Text('Error loading categories');
-                    }
-
-                    final categories = snapshot.data!.docs
-                        .map((doc) => doc['name'] as String)
-                        .toList();
-
-                    if (selectedCategory != null && !categories.contains(selectedCategory)) {
-                      selectedCategory = null;
-                    }
-
-                    return DropdownButtonFormField<String>(
-                      hint: const Text('Select Category'),
-                      value: selectedCategory,
-                      isExpanded: true,
-                      items: categories.map((String category) {
-                        return DropdownMenuItem<String>(
-                          value: category,
-                          child: Text(category),
-                        );
-                      }).toList(),
-                      onChanged: (newValue) {
-                        setState(() {
-                          selectedCategory = newValue;
-                        });
-                      },
-                      validator: (value) => value == null ? 'Please select a category' : null,
-                    );
-                  },
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                child: const Text('Cancel'),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-              ElevatedButton(
-                child: const Text('Upload'),
-                onPressed: () {
-                  if (nameController.text.isNotEmpty && selectedCategory != null) {
-                    Navigator.of(context).pop();
-                    _uploadDocument(file, nameController.text, selectedCategory!);
-                  } else {
-                    showMessageBox(context, 'Error', 'Please provide a name and category.');
-                  }
-                },
-              ),
-            ],
-          );
-        });
-      },
-    );
-  }
-
-  Future<void> _uploadDocument(File file, String name, String category) async {
-    setState(() => _isLoading = true);
-
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        if (mounted) {
-          showMessageBox(context, 'Error', 'User not logged in. Please log in again.');
-        }
-        return;
-      }
-      final fileType = file.path.split('.').last;
-      final fileUrl = await _supabaseService.uploadFile(file, name, user.uid);
-      await _firebaseService.saveDocumentMetadata(name, category, fileType, fileUrl);
-
-      if (mounted) {
-        showMessageBox(context, 'Success', 'Document uploaded successfully.');
-      }
-      setState(() {
-        _selectedFile = null;
-      });
-    } catch (e) {
-      if (mounted) {
-        showMessageBox(context, 'Error', 'Failed to upload document: $e');
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (_selectedFile != null)
-                Column(
-                  children: [
-                    Container(
-                      height: 200,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey),
-                        borderRadius: BorderRadius.circular(8.0),
-                      ),
-                      child: _selectedFile!.path.endsWith('.pdf')
-                          ? const Icon(Icons.picture_as_pdf, size: 100)
-                          : Image.file(_selectedFile!, fit: BoxFit.cover, width: double.infinity),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton.icon(
-                          icon: const Icon(Icons.clear),
-                          label: const Text('Clear'),
-                          onPressed: () {
-                            setState(() {
-                              _selectedFile = null;
-                            });
-                          },
-                        ),
-                      ],
-                    )
-                  ],
-                )
-              else
-                GestureDetector(
-                  onTap: _showUploadOptions,
-                  child: Container(
-                    height: 200,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey),
-                      borderRadius: BorderRadius.circular(8.0),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.cloud_upload_outlined, size: 80, color: Colors.grey[400]),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Tap to select a document',
-                          style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-                        ),
-                      ],
-                    ),
-                  ),
+      appBar: AppBar(
+        title: const Text('Upload Document'),
+        centerTitle: true,
+        elevation: 1,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            GestureDetector(
+              onTap: _pickFile,
+              child: Container(
+                height: 200,
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade400, width: 2, style: BorderStyle.solid),
                 ),
-              const SizedBox(height: 40),
-              ElevatedButton(
-                child: const Text('Upload Document'),
-                onPressed: _isLoading || _selectedFile == null
-                    ? null
-                    : () => _showUploadDialog(_selectedFile!),
+                child: _selectedFile != null
+                    ? Center(child: Text(_selectedFile!.path.split('/').last, textAlign: TextAlign.center))
+                    : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.cloud_upload_outlined, size: 80, color: Colors.grey[400]),
+                          const SizedBox(height: 16),
+                          Text('Tap to select a document', style: TextStyle(fontSize: 16, color: Colors.grey[600])),
+                        ],
+                      ),
+              ),
+            ),
+            const SizedBox(height: 40),
+            if (_isLoading)
+              const Center(child: CircularProgressIndicator())
+            else
+              ElevatedButton.icon(
+                icon: const Icon(Icons.file_upload),
+                label: const Text('Upload Document'),
+                onPressed: _isLoading || _selectedFile == null ? null : () => _showUploadDialog(_selectedFile!),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  textStyle: const TextStyle(fontSize: 18),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
-              if (_isLoading)
-                const Padding(
-                  padding: EdgeInsets.only(top: 20),
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-            ],
-          ),
+          ],
         ),
       ),
     );

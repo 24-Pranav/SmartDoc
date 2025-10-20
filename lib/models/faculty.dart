@@ -2,40 +2,30 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Faculty {
   final String id;
-  final String fullName;
+  final String name;
   final String email;
-  final String contactNumber;
   final String department;
-  String photoURL;
+  final String contactNumber;
+  final bool isVerified;
 
   Faculty({
     required this.id,
-    required this.fullName,
+    required this.name,
     required this.email,
-    required this.contactNumber,
     required this.department,
-    this.photoURL = '',
+    required this.contactNumber,
+    required this.isVerified,
   });
 
   factory Faculty.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
     return Faculty(
       id: doc.id,
-      fullName: data['fullName'] ?? '',
+      name: data['name'] ?? '',
       email: data['email'] ?? '',
-      contactNumber: data['contactNumber'] ?? '',
       department: data['department'] ?? '',
-      photoURL: data['photoURL'] ?? '',
+      contactNumber: data['contactNumber'] ?? '',
+      isVerified: data['isVerified'] ?? false,
     );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'fullName': fullName,
-      'email': email,
-      'contactNumber': contactNumber,
-      'department': department,
-      'photoURL': photoURL,
-    };
   }
 }

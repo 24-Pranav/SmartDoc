@@ -1,80 +1,97 @@
-
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:smart_doc/models/document.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 
 class FirebaseService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Future<void> saveDocumentMetadata(
-      String documentName, String category, String fileType, String fileUrl) async {
-    try {
-      final user = _auth.currentUser;
-      if (user == null) {
-        throw Exception('User not logged in');
-      }
-
-      final document = Document(
-        id: '', // Firestore will generate this
-        name: documentName,
-        category: category,
-        fileType: fileType,
-        downloadUrl: fileUrl, // This is the Supabase URL
-        uploadedDate: "${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}",
-        status: DocumentStatus.pending,
-        uploadedByUserId: user.uid,
-      );
-
-      await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('documents')
-          .add(document.toFirestore());
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error saving document metadata: $e');
-      }
-      rethrow;
-    }
-  }
+  // ... (existing methods)
 
   Future<void> registerFaculty({
     required String email,
     required String password,
     required String name,
     required String department,
-    String? contactNumber,
+    required String contactNumber,
   }) async {
+    // Note: This method should ideally be called from a secure admin environment.
+    // For this example, we'll assume it's called from the faculty registration screen.
+    
+    // First, create the user in Firebase Auth
+    // We won't sign them in, just create the user.
+    // A more robust solution would use a server-side function to create the user.
+    
+    // Create a temporary user to get a UID
     try {
-      // Create the user in Firebase Auth
-      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(email: email, password: password);
+      User? user = userCredential.user;
 
-      // Add custom claims to the user
-      await userCredential.user!.updateDisplayName(name);
+      if (user != null) {
+        // Now, store the faculty details in Firestore with the UID
+        await _firestore.collection('faculty').doc(user.uid).set({
+          'uid': user.uid, // Storing uid for easy lookup
+          'name': name,
+          'email': email,
+          'department': department,
+          'contactNumber': contactNumber,
+          'isVerified': false, // Admin needs to approve
+          'createdAt': FieldValue.serverTimestamp(),
+        });
 
-      // Store faculty details in Firestore
-      await _firestore.collection('faculty').doc(userCredential.user!.uid).set({
-        'fullName': name,
-        'email': email,
-        'department': department,
-        'contactNumber': contactNumber,
-        'status': 'pending',
-      });
+        // Optionally, sign the user out immediately after registration
+        await _auth.signOut();
+        
+      } else {
+        throw Exception('User could not be created.');
+      }
     } on FirebaseAuthException catch (e) {
+      // Provide more specific error messages
       if (e.code == 'weak-password') {
         throw Exception('The password provided is too weak.');
       } else if (e.code == 'email-already-in-use') {
-        throw Exception('The account already exists for that email.');
+        throw Exception('An account already exists for that email.');
       } else {
         throw Exception(e.message);
       }
     } catch (e) {
-      throw Exception('An error occurred while registering the faculty.');
+      throw Exception('An unknown error occurred: $e');
     }
   }
+
+  Stream<QuerySnapshot> getUnverifiedFaculty() {
+    return _firestore
+        .collection('faculty')
+        .where('isVerified', isEqualTo: false)
+        .snapshots();
+  }
+
+  Future<void> verifyFaculty(String uid) {
+    return _firestore.collection('faculty').doc(uid).update({'isVerified': true});
+  }
+
+  Stream<QuerySnapshot> getUsersByRole(String role) {
+    return _firestore
+        .collection('users')
+        .where('role', isEqualTo: role)
+        .snapshots();
+  }
+
+  Stream<QuerySnapshot> getFaculty() {
+    return _firestore.collection('faculty').snapshots();
+  }
+
+  Future<void> deleteUser(String userId) async {
+    // This is a simplified deletion. In a real app, you would want to handle this
+    // with a cloud function to ensure atomicity and handle related data.
+    await _firestore.collection('users').doc(userId).delete();
+    // Note: Deleting from Firebase Auth is a privileged operation and should
+    // be handled by a backend service for security reasons.
+  }
+
+  Future<void> deleteFaculty(String facultyId) async {
+    await _firestore.collection('faculty').doc(facultyId).delete();
+    // Note: Deleting from Firebase Auth should be handled by a backend service.
+  }
+
+  // ... (rest of the file)
 }

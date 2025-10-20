@@ -1,13 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:smart_doc/providers/user_provider.dart';
-import 'package:smart_doc/screens/admin/admin_verification_tab.dart';
-import '../../widgets/custom_app_bar.dart';
-import '../../widgets/custom_bottom_nav_bar.dart';
-import 'admin_analytics_tab.dart';
-import 'admin_categories_tab.dart';
-import 'admin_home_tab.dart';
-import 'admin_users_tab.dart';
+import 'package:smart_doc/screens/admin/admin_home_tab.dart';
+import 'package:smart_doc/screens/admin/admin_users_tab.dart';
+import 'package:smart_doc/screens/admin/admin_profile_tab.dart'; // Corrected import
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -17,51 +11,40 @@ class AdminDashboardScreen extends StatefulWidget {
 }
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
-  int _selectedIndex = 0;
+  int _currentIndex = 0;
 
-  final List<Widget> _widgetOptions = <Widget>[
+  final List<Widget> _tabs = [
     const AdminHomeTab(),
     const AdminUsersTab(),
-    const AdminCategoriesTab(),
-    const AdminAnalyticsTab(),
-    const AdminVerificationTab(),
+    const AdminProfileTab(), // Corrected reference
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CustomAppBar(
-        title: 'Welcome, Admin!',
-        showLogout: true,
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _tabs,
       ),
-      body: _widgetOptions.elementAt(_selectedIndex),
-      bottomNavigationBar: CustomBottomNavBar(
-        selectedIndex: _selectedIndex,
-        onItemTapped: (index) {
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (index) {
           setState(() {
-            _selectedIndex = index;
+            _currentIndex = index;
           });
         },
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard),
-            label: 'Dashboard',
+            icon: Icon(Icons.home_outlined),
+            label: 'Home',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.people),
+            icon: Icon(Icons.people_alt_outlined),
             label: 'Users',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.category),
-            label: 'Categories',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.analytics),
-            label: 'Analytics',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.verified_user),
-            label: 'Verification',
+            icon: Icon(Icons.person_outline),
+            label: 'Profile',
           ),
         ],
       ),

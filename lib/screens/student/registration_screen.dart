@@ -82,7 +82,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     bool isNameFound = false;
     bool isIdFound = false;
 
-    // Check for name: A simple contains check on the whole lowercased text is a good start.
     if (recognizedText.toLowerCase().contains(expectedName)) {
       isNameFound = true;
     }
@@ -92,13 +91,27 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         isIdFound = true;
     }
 
-    setState(() {
-      _isOcrInProgress = false;
-    });
-
     if (isNameFound && isIdFound) {
-      _register();
+      // Check for duplicate student ID
+      final existingUser = await _firestore
+          .collection('users')
+          .where('studentId', isEqualTo: _studentIdController.text.trim())
+          .get();
+
+      if (existingUser.docs.isNotEmpty) {
+        setState(() {
+          _isOcrInProgress = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('A user with this Student ID is already registered.')),
+        );
+      } else {
+        _register();
+      }
     } else {
+        setState(() {
+            _isOcrInProgress = false;
+        });
       // Construct a specific error message
       String errorMessage = 'OCR validation failed. ';
       if (!isNameFound && !isIdFound) {
@@ -171,6 +184,12 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           SnackBar(content: Text(e.message ?? 'Registration failed')),
         );
       }
+    } finally {
+        if(mounted) {
+            setState(() {
+                _isOcrInProgress = false;
+            });
+        }
     }
   }
 
