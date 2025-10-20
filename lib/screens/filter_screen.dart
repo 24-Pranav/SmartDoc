@@ -18,8 +18,18 @@ class FilterScreen extends StatefulWidget {
 class _FilterScreenState extends State<FilterScreen> {
   final DocumentStorageService _storageService = DocumentStorageService();
   bool _isSaving = false;
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _categoryController = TextEditingController();
 
   static const _tempImagePathKey = 'temp_image_path';
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _categoryController.dispose();
+    super.dispose();
+  }
 
   Future<void> _cleanupTempFiles() async {
     try {
@@ -36,11 +46,23 @@ class _FilterScreenState extends State<FilterScreen> {
   }
 
   Future<void> _saveDocument() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
     if (_isSaving) return;
     setState(() => _isSaving = true);
 
     try {
-      await _storageService.saveDocument(widget.imagePath);
+      final name = _nameController.text;
+      final category = _categoryController.text;
+      final fileType = widget.imagePath.split('.').last;
+
+      await _storageService.saveDocument(
+        File(widget.imagePath),
+        name,
+        category,
+        fileType,
+      );
 
       await _cleanupTempFiles();
 
@@ -90,24 +112,51 @@ class _FilterScreenState extends State<FilterScreen> {
               ),
           ],
         ),
-        body: Center(
-          child: Column(
-            children: [
-              Expanded(
-                child: Padding(
+        body: SingleChildScrollView(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Image.file(File(widget.imagePath)),
                 ),
-              ),
-              // Placeholder for filter controls
-              Container(
-                height: 100,
-                color: Colors.grey[200],
-                child: const Center(
-                  child: Text('Filter controls will be here', style: TextStyle(color: Colors.grey)),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
+                  child: Column(
+                    children: [
+                      TextFormField(
+                        controller: _nameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Document Name',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter a document name';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _categoryController,
+                        decoration: const InputDecoration(
+                          labelText: 'Category',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter a category';
+                          }
+                          return null;
+                        },
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
