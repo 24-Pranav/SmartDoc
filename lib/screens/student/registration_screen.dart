@@ -5,8 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:smart_doc/models/role.dart';
+import 'package:smart_doc/services/ocr_service.dart';
 
 class RegistrationScreen extends StatefulWidget {
   final Role role;
@@ -34,6 +34,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
   File? _studentIdCard;
   bool _isOcrInProgress = false;
+  final OcrService _ocrService = OcrService();
 
   @override
   void dispose() {
@@ -72,10 +73,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       _isOcrInProgress = true;
     });
 
-    final inputImage = InputImage.fromFile(_studentIdCard!);
-    final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
-    final RecognizedText recognizedText =
-        await textRecognizer.processImage(inputImage);
+    final String recognizedText = await _ocrService.processImage(_studentIdCard!);
 
     final expectedName = _studentNameController.text.trim().toLowerCase();
     final expectedId =
@@ -85,26 +83,14 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     bool isIdFound = false;
 
     // Check for name: A simple contains check on the whole lowercased text is a good start.
-    if (recognizedText.text.toLowerCase().contains(expectedName)) {
+    if (recognizedText.toLowerCase().contains(expectedName)) {
       isNameFound = true;
     }
 
-    // Check for ID: More robust check by normalizing the OCR text
-    for (final block in recognizedText.blocks) {
-      for (final line in block.lines) {
-        // Normalize the OCR line text by keeping only numbers
-        final ocrLineNumeric = line.text.replaceAll(RegExp(r'[^0-9]'), '');
-        if (ocrLineNumeric.contains(expectedId)) {
-          isIdFound = true;
-          break; // Found the ID, no need to check other lines in this block
-        }
-      }
-      if (isIdFound) {
-        break; // Found the ID, no need to check other blocks
-      }
+    final ocrTextNumeric = recognizedText.replaceAll(RegExp(r'[^0-9]'), '');
+    if (ocrTextNumeric.contains(expectedId)) {
+        isIdFound = true;
     }
-
-    textRecognizer.close();
 
     setState(() {
       _isOcrInProgress = false;

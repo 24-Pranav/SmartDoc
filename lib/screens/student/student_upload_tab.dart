@@ -10,6 +10,7 @@ import 'package:google_mlkit_document_scanner/google_mlkit_document_scanner.dart
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:smart_doc/services/ocr_service.dart';
 
 class StudentUploadTab extends StatefulWidget {
   const StudentUploadTab({super.key});
@@ -24,6 +25,7 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
   final FirebaseService _firebaseService = FirebaseService();
   final SupabaseService _supabaseService = SupabaseService();
   final ImagePicker _picker = ImagePicker();
+  final OcrService _ocrService = OcrService();
 
   Future<void> _requestPermissions() async {
     await Permission.camera.request();
@@ -130,9 +132,26 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
       final file = await pickFunction();
 
       if (file != null) {
+        final isImage = ['.jpg', '.jpeg', '.png'].any((ext) => file.path.toLowerCase().endsWith(ext));
+
+        if (isImage) {
+          setState(() => _isLoading = true);
+          final text = await _ocrService.processImage(file);
+          final isExpired = _ocrService.isDocumentExpired(text);
+          setState(() => _isLoading = false);
+
+          if (isExpired) {
+            if (mounted) {
+              showMessageBox(context, 'Validation Failed', 'The document appears to be expired and cannot be uploaded.');
+            }
+            return; // Stop the process
+          }
+        }
+
         setState(() {
           _selectedFile = file;
         });
+
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -143,6 +162,7 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
     } catch (e) {
       if (mounted) {
         showMessageBox(context, 'Error', 'Failed to pick file: $e');
+        setState(() => _isLoading = false);
       }
     }
   }
