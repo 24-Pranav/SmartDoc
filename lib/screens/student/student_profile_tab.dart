@@ -13,7 +13,7 @@ extension StringExtension on String {
 }
 
 class StudentProfileTab extends StatefulWidget {
-  const StudentProfileTab({Key? key}) : super(key: key);
+  const StudentProfileTab({super.key});
 
   @override
   _StudentProfileTabState createState() => _StudentProfileTabState();

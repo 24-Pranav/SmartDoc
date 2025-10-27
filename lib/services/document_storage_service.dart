@@ -37,7 +37,7 @@ class DocumentStorageService {
     final response = await _supabase.storage.from('documents').upload(
           fileName,
           file,
-          fileOptions: FileOptions(cacheControl: '3600', upsert: false),
+          fileOptions: const FileOptions(cacheControl: '3600', upsert: false),
         );
 
     final downloadUrl = _supabase.storage.from('documents').getPublicUrl(fileName);

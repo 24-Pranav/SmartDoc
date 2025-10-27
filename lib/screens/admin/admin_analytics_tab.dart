@@ -90,7 +90,7 @@ class AdminAnalyticsTab extends StatelessWidget {
 
   Widget _buildStatusPieChartCard(BuildContext context, Map<DocumentStatus, int> statusCounts, int totalDocs) {
     final List<PieChartSectionData> sections = statusCounts.entries.map((entry) {
-      final isTouched = false; // Placeholder for future interactivity
+      const isTouched = false; // Placeholder for future interactivity
       final double fontSize = isTouched ? 18.0 : 14.0;
       final double radius = isTouched ? 60.0 : 50.0;
       return PieChartSectionData(
@@ -204,11 +204,11 @@ class AdminAnalyticsTab extends StatelessWidget {
                               reservedSize: 38,
                             ),
                           ),
-                          leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 28)),
-                          topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                          rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 28)),
+                          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                         ),
-                        gridData: FlGridData(show: true, drawVerticalLine: false, horizontalInterval: 5),
+                        gridData: const FlGridData(show: true, drawVerticalLine: false, horizontalInterval: 5),
                         borderData: FlBorderData(show: false),
                         barGroups: barGroups,
                       ),

@@ -61,7 +61,7 @@ class _FacultyNotificationsTabState extends State<FacultyNotificationsTab> {
                   title: Text(notification.title),
                   subtitle: Text(notification.message),
                   trailing: Text(
-                    '${notification.timestamp.toDate().toString().substring(0, 10)}',
+                    notification.timestamp.toDate().toString().substring(0, 10),
                   ),
                 ),
               );

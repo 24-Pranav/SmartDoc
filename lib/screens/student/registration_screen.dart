@@ -11,7 +11,7 @@ import 'package:smart_doc/services/ocr_service.dart';
 class RegistrationScreen extends StatefulWidget {
   final Role role;
 
-  RegistrationScreen({required this.role});
+  const RegistrationScreen({super.key, required this.role});
 
   @override
   _RegistrationScreenState createState() => _RegistrationScreenState();
@@ -61,7 +61,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   Future<void> _performOcr() async {
     if (_studentIdCard == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please select an image first.')),
+        const SnackBar(content: Text('Please select an image first.')),
       );
       return;
     }
@@ -209,62 +209,62 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 if (widget.role == Role.student) ...[
                   TextFormField(
                     controller: _studentNameController,
-                    decoration: InputDecoration(labelText: 'Student Name'),
+                    decoration: const InputDecoration(labelText: 'Student Name'),
                     validator: (value) =>
                         value!.isEmpty ? 'Please enter your name' : null,
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   TextFormField(
                     controller: _studentIdController,
-                    decoration: InputDecoration(labelText: 'Student ID'),
+                    decoration: const InputDecoration(labelText: 'Student ID'),
                     validator: (value) =>
                         value!.isEmpty ? 'Please enter your student ID' : null,
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   TextFormField(
                     controller: _yearController,
-                    decoration: InputDecoration(labelText: 'Year'),
+                    decoration: const InputDecoration(labelText: 'Year'),
                     validator: (value) =>
                         value!.isEmpty ? 'Please enter your year' : null,
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   TextFormField(
                     controller: _sectionController,
-                    decoration: InputDecoration(labelText: 'Section'),
+                    decoration: const InputDecoration(labelText: 'Section'),
                     validator: (value) =>
                         value!.isEmpty ? 'Please enter your section' : null,
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   _studentIdCard == null
-                      ? Text('No image selected.')
+                      ? const Text('No image selected.')
                       : Image.file(_studentIdCard!),
                   ElevatedButton(
                     onPressed: _pickImage,
-                    child: Text('Upload Student ID Card'),
+                    child: const Text('Upload Student ID Card'),
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                 ],
                 TextFormField(
                   controller: _emailController,
-                  decoration: InputDecoration(labelText: 'Email'),
+                  decoration: const InputDecoration(labelText: 'Email'),
                   validator: (value) =>
                       value!.isEmpty ? 'Please enter your email' : null,
                 ),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 TextFormField(
                   controller: _passwordController,
-                  decoration: InputDecoration(labelText: 'Password'),
+                  decoration: const InputDecoration(labelText: 'Password'),
                   obscureText: true,
                   validator: (value) =>
                       value!.isEmpty ? 'Please enter your password' : null,
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
                 _isOcrInProgress
-                    ? CircularProgressIndicator()
+                    ? const CircularProgressIndicator()
                     : ElevatedButton(
                         onPressed:
                             widget.role == Role.student ? _performOcr : _register,
-                        child: Text('Register'),
+                        child: const Text('Register'),
                       ),
               ],
             ),

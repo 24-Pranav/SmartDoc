@@ -142,7 +142,7 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
               child: PieChart(
                 PieChartData(
                   sections: _userRoleDistribution.entries.map((entry) {
-                    final isTouched = false;
+                    const isTouched = false;
                     final fontSize = isTouched ? 25.0 : 16.0;
                     final radius = isTouched ? 60.0 : 50.0;
                     return PieChartSectionData(

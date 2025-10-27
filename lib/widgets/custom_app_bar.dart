@@ -26,7 +26,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
               await FirebaseAuth.instance.signOut();
               Navigator.pushAndRemoveUntil(
                 context,
-                MaterialPageRoute(builder: (context) => RoleSelectionScreen()),
+                MaterialPageRoute(builder: (context) => const RoleSelectionScreen()),
                     (Route<dynamic> route) => false,
               );
             },

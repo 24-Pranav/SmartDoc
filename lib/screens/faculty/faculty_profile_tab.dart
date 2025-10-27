@@ -72,10 +72,10 @@ class _FacultyProfileTabState extends State<FacultyProfileTab> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            CircleAvatar(
+            const CircleAvatar(
               radius: 50,
               // You can add a network image here if you have a photoURL
-              child: const Icon(Icons.person, size: 50),
+              child: Icon(Icons.person, size: 50),
             ),
             const SizedBox(height: 16),
             Text(_faculty!.name, style: Theme.of(context).textTheme.headlineSmall),

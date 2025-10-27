@@ -4,7 +4,7 @@ import 'package:smart_doc/models/student.dart';
 class StudentProfileScreen extends StatelessWidget {
   final Student student;
 
-  const StudentProfileScreen({Key? key, required this.student}) : super(key: key);
+  const StudentProfileScreen({super.key, required this.student});
 
   @override
   Widget build(BuildContext context) {

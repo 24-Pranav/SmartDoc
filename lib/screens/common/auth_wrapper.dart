@@ -28,7 +28,6 @@ class AuthWrapper extends StatelessWidget {
         if (snapshot.hasData && snapshot.data != null) {
           return FutureBuilder<List<DocumentSnapshot>>(
             future: Future.wait([
-
               FirebaseFirestore.instance.collection('users').doc(snapshot.data!.uid).get(),
               FirebaseFirestore.instance.collection('faculty').doc(snapshot.data!.uid).get(),
             ]),
@@ -44,6 +43,13 @@ class AuthWrapper extends StatelessWidget {
               final userSnapshot = snapshots.data![0];
               final facultySnapshot = snapshots.data![1];
 
+              if (userSnapshot.exists) {
+                final userData = User.fromFirestore(userSnapshot.data() as Map<String, dynamic>, userSnapshot.id);
+                if (userData.role == Role.admin) {
+                  return const AdminDashboardScreen();
+                }
+              }
+
               if (facultySnapshot.exists) {
                 final status = facultySnapshot['status'];
                 if (status == 'approved') {
@@ -55,22 +61,17 @@ class AuthWrapper extends StatelessWidget {
 
               if (userSnapshot.exists) {
                 final userData = User.fromFirestore(userSnapshot.data() as Map<String, dynamic>, userSnapshot.id);
-                switch (userData.role) {
-                  case Role.admin:
-                    return const AdminDashboardScreen();
-                  case Role.student:
-                    return const StudentDashboardScreen();
-                  default:
-                    return RoleSelectionScreen();
+                if (userData.role == Role.student) {
+                  return const StudentDashboardScreen();
                 }
               }
 
-              return RoleSelectionScreen();
+              return const RoleSelectionScreen();
             },
           );
         }
 
-        return RoleSelectionScreen();
+        return const RoleSelectionScreen();
       },
     );
   }

@@ -159,7 +159,7 @@ class _AdminUsersTabState extends State<AdminUsersTab> {
         );
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete user: \$e')),
+          const SnackBar(content: Text('Failed to delete user: \$e')),
         );
       }
     }
@@ -192,7 +192,7 @@ class _AdminUsersTabState extends State<AdminUsersTab> {
         );
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete faculty member: \$e')),
+          const SnackBar(content: Text('Failed to delete faculty member: \$e')),
         );
       }
     }

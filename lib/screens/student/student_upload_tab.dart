@@ -7,7 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:smart_doc/utils/show_message_box.dart'; // Assuming you have this helper
 
 class StudentUploadTab extends StatefulWidget {
-  const StudentUploadTab({Key? key}) : super(key: key);
+  const StudentUploadTab({super.key});
 
   @override
   _StudentUploadTabState createState() => _StudentUploadTabState();
@@ -30,7 +30,7 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
       final snapshot = await FirebaseFirestore.instance.collection('document_categories').get();
       if (snapshot.docs.isNotEmpty) {
         setState(() {
-          _categories = snapshot.docs.map((doc) => doc.id as String).toList();
+          _categories = snapshot.docs.map((doc) => doc.id).toList();
         });
       }
     } catch (e) {

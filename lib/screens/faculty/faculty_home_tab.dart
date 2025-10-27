@@ -4,7 +4,7 @@ import 'package:smart_doc/models/student.dart';
 import 'package:smart_doc/screens/faculty/student_profile_screen.dart';
 
 class FacultyHomeTab extends StatefulWidget {
-  const FacultyHomeTab({Key? key}) : super(key: key);
+  const FacultyHomeTab({super.key});
 
   @override
   _FacultyHomeTabState createState() => _FacultyHomeTabState();
