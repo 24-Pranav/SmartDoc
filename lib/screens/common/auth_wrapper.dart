@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:smart_doc/models/role.dart';
 import 'package:smart_doc/models/user.dart';
 import 'package:smart_doc/screens/admin/admin_dashboard_screen.dart';
 import 'package:smart_doc/screens/faculty/faculty_dashboard_screen.dart';
@@ -45,7 +44,7 @@ class AuthWrapper extends StatelessWidget {
 
               if (userSnapshot.exists) {
                 final userData = User.fromFirestore(userSnapshot.data() as Map<String, dynamic>, userSnapshot.id);
-                if (userData.role == Role.admin) {
+                if (userData.role == 'admin') {
                   return const AdminDashboardScreen();
                 }
               }
@@ -61,7 +60,7 @@ class AuthWrapper extends StatelessWidget {
 
               if (userSnapshot.exists) {
                 final userData = User.fromFirestore(userSnapshot.data() as Map<String, dynamic>, userSnapshot.id);
-                if (userData.role == Role.student) {
+                if (userData.role == 'student') {
                   return const StudentDashboardScreen();
                 }
               }

@@ -34,6 +34,19 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  void _resetPassword() async {
+    if (_emailController.text.isEmpty) {
+      showMessageBox(context, 'Error', 'Please enter your email to reset your password.');
+      return;
+    }
+    try {
+      await _auth.sendPasswordResetEmail(email: _emailController.text);
+      showMessageBox(context, 'Success', 'Password reset email sent. Please check your inbox.');
+    } catch (e) {
+      showMessageBox(context, 'Error', 'Failed to send password reset email. Please try again.');
+    }
+  }
+
   void _login() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       showMessageBox(context, 'Error', 'Please fill all fields.');
@@ -300,10 +313,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Column(
       children: [
         TextButton(
-          onPressed: () {
-            showMessageBox(context, 'Feature',
-                'Forgot Password not implemented in prototype.');
-          },
+          onPressed: _resetPassword,
           child: const Text(
             'Forgot Password?',
             style: TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold),
