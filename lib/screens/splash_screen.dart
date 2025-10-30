@@ -13,7 +13,6 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  bool _showLogo = false;
   bool _showText = false;
   bool _showTagline = false;
   bool _isSmartAnimationFinished = false;
@@ -22,15 +21,14 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Timer(const Duration(milliseconds: 300), () => setState(() => _showLogo = true));
-    Timer(const Duration(milliseconds: 1000), () => setState(() => _showText = true));
-    Timer(const Duration(milliseconds: 2200), () => setState(() => _showTagline = true));
+    Timer(const Duration(milliseconds: 500), () => setState(() => _showText = true));
+    Timer(const Duration(milliseconds: 1800), () => setState(() => _showTagline = true));
   }
 
   @override
   Widget build(BuildContext context) {
     return AnimatedSplashScreen(
-      duration: 4000,
+      duration: 3500,
       splash: Container(
         width: double.infinity,
         height: double.infinity,
@@ -42,39 +40,27 @@ class _SplashScreenState extends State<SplashScreen> {
           ),
         ),
         child: Center(
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                AnimatedScale(
-                  scale: _showLogo ? 1.0 : 0.0,
-                  duration: const Duration(milliseconds: 800),
-                  curve: Curves.easeOutBack,
-                  child: Image.asset(
-                    'assets/images/logo.png',
-                    height: 120,
-                  ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (_showText)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _isSmartAnimationFinished ? _buildStaticSmartText() : _buildAnimatedSmartText(),
+                    if (_isSmartAnimationFinished)
+                      _isDocAnimationFinished ? _buildStaticDocText() : _buildAnimatedDocText(),
+                  ],
                 ),
-                const SizedBox(height: 25),
-                if (_showText)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _isSmartAnimationFinished ? _buildStaticSmartText() : _buildAnimatedSmartText(),
-                      if (_isSmartAnimationFinished)
-                        _isDocAnimationFinished ? _buildStaticDocText() : _buildAnimatedDocText(),
-                    ],
-                  ),
-                const SizedBox(height: 10),
-                if (_showTagline)
-                   _buildTaglineText(),
-                const SizedBox(height: 30),
-                Lottie.asset(
-                  'assets/loader.json',
-                  height: 80,
-                ),
-              ],
-            ),
+              const SizedBox(height: 15),
+              if (_showTagline)
+                 _buildTaglineText(),
+              const SizedBox(height: 40),
+              Lottie.asset(
+                'assets/loader.json',
+                height: 90,
+              ),
+            ],
           ),
         ),
       ),
@@ -93,10 +79,10 @@ class _SplashScreenState extends State<SplashScreen> {
           speed: const Duration(milliseconds: 150),
           cursor: '',
           textStyle: const TextStyle(
-            fontSize: 38,
+            fontSize: 52,
             fontWeight: FontWeight.bold,
             color: Colors.white,
-            letterSpacing: 1.5,
+            letterSpacing: 2.0,
           ),
         ),
       ],
@@ -119,10 +105,10 @@ class _SplashScreenState extends State<SplashScreen> {
           speed: const Duration(milliseconds: 150),
           cursor: '|',
           textStyle: TextStyle(
-            fontSize: 38,
+            fontSize: 52,
             fontWeight: FontWeight.bold,
             color: Colors.lightBlue[200],
-            letterSpacing: 1.5,
+            letterSpacing: 2.0,
           ),
         ),
       ],
@@ -140,10 +126,10 @@ class _SplashScreenState extends State<SplashScreen> {
     return const Text(
       'Smart',
       style: TextStyle(
-        fontSize: 38,
+        fontSize: 52,
         fontWeight: FontWeight.bold,
         color: Colors.white,
-        letterSpacing: 1.5,
+        letterSpacing: 2.0,
       ),
     );
   }
@@ -152,10 +138,10 @@ class _SplashScreenState extends State<SplashScreen> {
     return Text(
       'Doc',
       style: TextStyle(
-        fontSize: 38,
+        fontSize: 52,
         fontWeight: FontWeight.bold,
         color: Colors.lightBlue[200],
-        letterSpacing: 1.5,
+        letterSpacing: 2.0,
       ),
     );
   }
@@ -168,7 +154,7 @@ class _SplashScreenState extends State<SplashScreen> {
           'Managing documents, intelligently.',
           duration: const Duration(milliseconds: 1200),
           textStyle: const TextStyle(
-            fontSize: 16,
+            fontSize: 18,
             color: Colors.white70,
           ),
         ),

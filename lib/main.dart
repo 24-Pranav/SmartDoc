@@ -9,6 +9,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
+import 'package:smart_doc/utils/app_theme.dart'; // Import the new theme file
 
 // This function handles background messages
 @pragma('vm:entry-point')
@@ -116,9 +117,7 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'SmartDoc',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
+      theme: AppTheme.lightTheme, // Apply the new light theme
       home: const SplashScreen(),
       debugShowCheckedModeBanner: false,
     );
