@@ -225,7 +225,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
     required String labelText,
   }) {
     return DropdownButtonFormField<T>(
-      initialValue: value,
+      value: value,
       hint: hint != null ? Text(hint) : null,
       items: items,
       onChanged: onChanged,
