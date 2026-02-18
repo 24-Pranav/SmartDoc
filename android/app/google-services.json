@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "748847751585",
+    "project_id": "smartdoc-9f672",
+    "storage_bucket": "smartdoc-9f672.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:748847751585:android:79428ec061e0ce88e62be0",
+        "android_client_info": {
+          "package_name": "com.example.collegeapplication"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAUgprDAtNzGLGXKY4gnPO45x1vh0IjLBU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

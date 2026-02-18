@@ -1,0 +1,82 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function getRequestingUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    function isRole(role) {
+      return isSignedIn() && getRequestingUserRole() == role;
+    }
+
+    // users collection
+    match /users/{userId} {
+      // * FIX 1: Faculty can now read the user/student list *
+      allow read: if isRole('admin') || isRole('faculty') || request.auth.uid == userId;
+      allow write: if isRole('admin') || request.auth.uid == userId;
+    }
+
+    // categories collection
+    match /categories/{categoryId} {
+        allow write: if isRole('admin');
+        allow read: if isSignedIn();
+    }
+    
+    // faculty collection
+    match /faculty/{facultyId} {
+      allow create: if isSignedIn();
+      allow update: if isRole('admin');
+      allow read: if isSignedIn();
+      allow delete: if isRole('admin');
+    }
+
+    // documents collection
+    match /documents/{documentId} {
+      // Allow create, read, and delete for the document owner or admin/faculty
+      allow create: if isSignedIn() && request.resource.data.studentId == request.auth.uid;
+      allow read: if isRole('admin') || isRole('faculty') || request.auth.uid == resource.data.studentId;
+      allow delete: if isRole('admin') || request.auth.uid == resource.data.studentId;
+
+      // This list rule is correct
+      allow list: if isRole('admin') || isRole('faculty') || 
+                     (isRole('student') && request.query.filters.studentId == request.auth.uid);
+
+      // CORRECTED UPDATE RULE
+      allow update: if
+        // A student can update their doc, BUT ONLY if they are NOT changing the status fields.
+        // This allows them to re-upload a file (changing the doc_url) but not approve it.
+        (request.auth.uid == resource.data.studentId &&
+          request.resource.data.status == resource.data.status &&
+          request.resource.data.comments == resource.data.comments)
+        ||
+        // A faculty member can ONLY update fields related to verification.
+        (isRole('faculty') &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'status', 'comments', 'isArchived', 'verified_by', 'verified_at', 'verified_by_user_id', 'verification_date'
+          ]));
+    }
+
+    // notifications collection
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn();
+      allow create: if isRole('faculty');
+      allow delete: if isRole('admin') || (isRole('faculty') && request.auth.uid == resource.data.senderId);
+
+      // * FIX 2: Notification updates are now more robust *
+      // This allows a user to dismiss a notification even if they are the first person to do so.
+      allow update: if isSignedIn()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['dismissedBy'])
+                    && (
+                      // Case 1: The 'dismissedBy' field already exists.
+                      (resource.data.keys().hasAny(['dismissedBy']) && request.resource.data.dismissedBy == resource.data.dismissedBy.concat([request.auth.uid])) ||
+                      // Case 2: The 'dismissedBy' field does not exist, so we create it.
+                      (!resource.data.keys().hasAny(['dismissedBy']) && request.resource.data.dismissedBy == [request.auth.uid])
+                    );
+    }
+  }
+}
