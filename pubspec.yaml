@@ -45,7 +45,7 @@ dependencies:
   cupertino_icons: ^1.0.2
   open_file: ^3.3.2
   flutter_local_notifications: ^20.1.0
-  dotted_border: ^3.1.0
+  dotted_border: ^2.1.0
   flutter_document_scanner: ^1.1.2
 
 dev_dependencies:

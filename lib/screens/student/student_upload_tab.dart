@@ -1,4 +1,6 @@
+
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -12,6 +14,7 @@ import 'package:smart_doc/services/supabase_service.dart';
 import 'package:uuid/uuid.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter_document_scanner/flutter_document_scanner.dart';
+import 'package:path_provider/path_provider.dart';
 
 class StudentUploadTab extends StatefulWidget {
   const StudentUploadTab({super.key});
@@ -62,7 +65,6 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
       type: FileType.custom,
       allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
     );
-
     if (result != null) {
       setState(() {
         _selectedFile = File(result.files.single.path!);
@@ -71,10 +73,26 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
   }
 
   Future<void> _scanDocument() async {
-    final scannedDoc = await FlutterDocumentScanner.scanDocument();
-    if (scannedDoc != null) {
+    final File? scannedFile = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          appBar: AppBar(title: const Text('Scan Document')),
+          body: DocumentScanner(
+            onSave: (Uint8List imageBytes) async {
+              final directory = await getTemporaryDirectory();
+              final file = File(
+                  '${directory.path}/${DateTime.now().millisecondsSinceEpoch}.png');
+              await file.writeAsBytes(imageBytes);
+              Navigator.pop(context, file);
+            },
+          ),
+        ),
+      ),
+    );
+    if (scannedFile != null) {
       setState(() {
-        _selectedFile = scannedDoc;
+        _selectedFile = scannedFile;
       });
     }
   }
@@ -91,7 +109,6 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
           const SnackBar(content: Text('Please select a category first.')));
       return;
     }
-
     if (_selectedFile == null) {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Please select a file to upload.')));
@@ -106,7 +123,6 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
           content: Text('Could not verify user. Please log in again.')));
       return;
     }
-
     final String userName = user.name!;
 
     setState(() {
@@ -134,18 +150,14 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
         if (['jpg', 'jpeg', 'png'].contains(fileExtension)) {
           final extractedText =
           await _ocrService.processImage(_selectedFile!);
-
           if (extractedText.isEmpty) {
-            throw Exception(
-                'No text could be extracted from the image.');
+            throw Exception('No text could be extracted from the image.');
           }
 
           final aiResponse = await _aiService.verifyDocument(
               extractedText, _selectedCategory!, userName);
-
           final aiStatus =
-          (aiResponse['status'] as String? ?? 'pending')
-              .toLowerCase();
+          (aiResponse['status'] as String? ?? 'pending').toLowerCase();
 
           if (aiStatus == 'approved') {
             status = 'approved';
@@ -166,8 +178,8 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
         'Verification failed. Manual review required. ${e.toString()}';
       }
 
-      final downloadUrl = await _supabaseService.uploadFile(
-          _selectedFile!, documentId, user.id);
+      final downloadUrl =
+      await _supabaseService.uploadFile(_selectedFile!, documentId, user.id);
 
       await FirebaseFirestore.instance
           .collection('documents')
@@ -260,7 +272,8 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
+                  borderSide:
+                  BorderSide(color: Theme.of(context).primaryColor, width: 2),
                 ),
               ),
               items: _categories.map((String category) {
@@ -293,60 +306,66 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
                   ),
                   child: _selectedFile == null
                       ? const Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.cloud_upload_outlined,
-                              size: 60,
-                              color: Colors.grey,
-                            ),
-                            SizedBox(height: 12),
-                            Text(
-                              'Tap to select a file',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.black54,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            Text(
-                              'JPG, PNG or PDF',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.black45,
-                              ),
-                            ),
-                          ],
-                        )
-                      : Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.check_circle, size: 60, color: Theme.of(context).primaryColor),
-                                const SizedBox(height: 12),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                                  child: Text(
-                                    _selectedFile!.path.split('/').last,
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Positioned(
-                              top: 8,
-                              right: 8,
-                              child: IconButton(
-                                icon: const Icon(Icons.close, color: Colors.redAccent),
-                                onPressed: _clearSelection,
-                              ),
-                            )
-                          ],
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.cloud_upload_outlined,
+                        size: 60,
+                        color: Colors.grey,
+                      ),
+                      SizedBox(height: 12),
+                      Text(
+                        'Tap to select a file',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.black54,
+                          fontWeight: FontWeight.w500,
                         ),
+                      ),
+                      Text(
+                        'JPG, PNG or PDF',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.black45,
+                        ),
+                      ),
+                    ],
+                  )
+                      : Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.check_circle,
+                              size: 60,
+                              color: Theme.of(context).primaryColor),
+                          const SizedBox(height: 12),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16.0),
+                            child: Text(
+                              _selectedFile!.path.split('/').last,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: IconButton(
+                          icon: const Icon(Icons.close,
+                              color: Colors.redAccent),
+                          onPressed: _clearSelection,
+                        ),
+                      )
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -372,22 +391,22 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
             _isUploading
                 ? const Center(child: CircularProgressIndicator())
                 : ElevatedButton.icon(
-                    icon: const Icon(Icons.upload_file_rounded),
-                    label: const Text('Upload and Verify'),
-                    onPressed: _uploadAndProcessFile,
-                    style: ElevatedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      backgroundColor: Theme.of(context).primaryColor,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      textStyle: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
+              icon: const Icon(Icons.upload_file_rounded),
+              label: const Text('Upload and Verify'),
+              onPressed: _uploadAndProcessFile,
+              style: ElevatedButton.styleFrom(
+                foregroundColor: Colors.white,
+                backgroundColor: Theme.of(context).primaryColor,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
           ],
         ),
       ),
