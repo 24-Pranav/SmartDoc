@@ -22,11 +22,11 @@ class StudentUploadTab extends StatefulWidget {
 
 class _StudentUploadTabState extends State<StudentUploadTab> {
   final OcrService _ocrService = OcrService();
-  final AIService _aiService = AIService(apiKey: 'YOUR_API_KEY_HERE'); // Move this to .env in production
+  final AIService _aiService =
+  AIService(apiKey: 'YOUR_API_KEY_HERE'); // Move this to .env in production
   final SupabaseService _supabaseService = SupabaseService();
   final FirebaseService _firebaseService = FirebaseService();
   final Uuid _uuid = const Uuid();
-  final _scannerController = DocumentScannerController();
 
   bool _isUploading = false;
   String? _selectedCategory;
@@ -41,15 +41,18 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
 
   Future<void> _fetchCategories() async {
     try {
-      final snapshot = await FirebaseFirestore.instance.collection('categories').get();
+      final snapshot =
+      await FirebaseFirestore.instance.collection('categories').get();
       if (mounted) {
         setState(() {
-          _categories = snapshot.docs.map((doc) => doc['name'] as String).toList();
+          _categories =
+              snapshot.docs.map((doc) => doc['name'] as String).toList();
         });
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to load categories: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to load categories: $e')));
       }
     }
   }
@@ -59,6 +62,7 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
       type: FileType.custom,
       allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
     );
+
     if (result != null) {
       setState(() {
         _selectedFile = File(result.files.single.path!);
@@ -67,7 +71,7 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
   }
 
   Future<void> _scanDocument() async {
-    final scannedDoc = await _scannerController.scanDocument();
+    final scannedDoc = await FlutterDocumentScanner.scanDocument();
     if (scannedDoc != null) {
       setState(() {
         _selectedFile = scannedDoc;
@@ -83,20 +87,26 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
 
   Future<void> _uploadAndProcessFile() async {
     if (_selectedCategory == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a category first.')));
-      return;
-    }
-    if (_selectedFile == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a file to upload.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select a category first.')));
       return;
     }
 
-    final User? user = Provider.of<UserProvider>(context, listen: false).user;
+    if (_selectedFile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select a file to upload.')));
+      return;
+    }
+
+    final User? user =
+        Provider.of<UserProvider>(context, listen: false).user;
 
     if (user == null || user.name == null || user.name!.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not verify user. Please log in again.')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Could not verify user. Please log in again.')));
       return;
     }
+
     final String userName = user.name!;
 
     setState(() {
@@ -112,28 +122,39 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
           .get();
 
       final bool isUpdating = existingDocsQuery.docs.isNotEmpty;
-      final String documentId = isUpdating ? existingDocsQuery.docs.first.id : _uuid.v4();
+      final String documentId =
+      isUpdating ? existingDocsQuery.docs.first.id : _uuid.v4();
 
       String status;
       String comments;
-      final String fileExtension = _selectedFile!.path.split('.').last.toLowerCase();
+      final String fileExtension =
+      _selectedFile!.path.split('.').last.toLowerCase();
 
       try {
         if (['jpg', 'jpeg', 'png'].contains(fileExtension)) {
-          final extractedText = await _ocrService.processImage(_selectedFile!);
+          final extractedText =
+          await _ocrService.processImage(_selectedFile!);
+
           if (extractedText.isEmpty) {
-            throw Exception('No text could be extracted from the image.');
+            throw Exception(
+                'No text could be extracted from the image.');
           }
 
-          final aiResponse = await _aiService.verifyDocument(extractedText, _selectedCategory!, userName);
-          final aiStatus = (aiResponse['status'] as String? ?? 'pending').toLowerCase();
+          final aiResponse = await _aiService.verifyDocument(
+              extractedText, _selectedCategory!, userName);
+
+          final aiStatus =
+          (aiResponse['status'] as String? ?? 'pending')
+              .toLowerCase();
 
           if (aiStatus == 'approved') {
             status = 'approved';
-            comments = aiResponse['comments'] as String? ?? 'Automatically approved by AI.';
+            comments = aiResponse['comments'] as String? ??
+                'Automatically approved by AI.';
           } else {
             status = 'pending';
-            comments = aiResponse['comments'] as String? ?? 'Sent for faculty review.';
+            comments = aiResponse['comments'] as String? ??
+                'Sent for faculty review.';
           }
         } else {
           status = 'pending';
@@ -141,12 +162,17 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
         }
       } catch (e) {
         status = 'pending';
-        comments = 'Verification failed. Manual review required. ${e.toString()}';
+        comments =
+        'Verification failed. Manual review required. ${e.toString()}';
       }
 
-      final downloadUrl = await _supabaseService.uploadFile(_selectedFile!, documentId, user.id);
+      final downloadUrl = await _supabaseService.uploadFile(
+          _selectedFile!, documentId, user.id);
 
-      await FirebaseFirestore.instance.collection('documents').doc(documentId).set({
+      await FirebaseFirestore.instance
+          .collection('documents')
+          .doc(documentId)
+          .set({
         'id': documentId,
         'studentId': user.id,
         'uploader_name': userName,
