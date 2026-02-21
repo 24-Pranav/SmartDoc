@@ -71,25 +71,33 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
   }
 
   Future<void> _scanDocument() async {
+    final scanner = DocumentScanner(
+      options: DocumentScannerOptions(
+        documentFormats: const {DocumentFormat.jpeg},
+        mode: ScannerMode.full,
+        isGalleryImport: true,
+        pageLimit: 5,
+      ),
+    );
     try {
-      final scanner = DocumentScanner();
-      final DocumentScanningResult result = await scanner.scanDocument(options: DocumentScannerOptions());
+      final DocumentScanningResult result = await scanner.scanDocument();
 
-      if (result.pdf != null && result.pdf!.path.isNotEmpty) {
+      final images = result.images;
+      if (images != null && images.isNotEmpty) {
         setState(() {
-          _selectedFile = File(result.pdf!.path);
-        });
-      } else if (result.images.isNotEmpty) {
-        setState(() {
-          _selectedFile = File(result.images.first.path);
+          _selectedFile = File(images.first);
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to scan document: $e'),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to scan document: $e'),
+          ),
+        );
+      }
+    } finally {
+      scanner.close();
     }
   }
 
@@ -160,10 +168,15 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
             status = 'approved';
             comments = aiResponse['comments'] as String? ??
                 'Automatically approved by AI.';
+          } else if (aiStatus == 'rejected') {
+            status = 'rejected';
+            comments = aiResponse['comments'] as String? ??
+                'Automatically rejected by AI.';
           } else {
+            // AI could not determine — send to faculty
             status = 'pending';
             comments = aiResponse['comments'] as String? ??
-                'Sent for faculty review.';
+                'AI could not verify. Sent for faculty review.';
           }
         } else {
           status = 'pending';
@@ -194,10 +207,17 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
         'doc_name': _selectedFile!.path.split('/').last,
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(isUpdating
-              ? 'Document updated.'
-              : 'Document uploaded successfully.')));
+      if (mounted) {
+        final statusMsg = status == 'approved'
+            ? '✅ Document approved by AI!'
+            : status == 'rejected'
+                ? '❌ Document rejected by AI. Check comments for details.'
+                : '⏳ Document sent for faculty review.';
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(isUpdating
+                ? 'Document updated. $statusMsg'
+                : statusMsg)));
+      }
 
       setState(() {
         _selectedFile = null;
