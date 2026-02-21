@@ -1,6 +1,5 @@
 
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -13,8 +12,7 @@ import 'package:smart_doc/services/ocr_service.dart';
 import 'package:smart_doc/services/supabase_service.dart';
 import 'package:uuid/uuid.dart';
 import 'package:dotted_border/dotted_border.dart';
-import 'package:flutter_document_scanner/flutter_document_scanner.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:google_mlkit_document_scanner/google_mlkit_document_scanner.dart';
 
 class StudentUploadTab extends StatefulWidget {
   const StudentUploadTab({super.key});
@@ -73,29 +71,28 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
   }
 
   Future<void> _scanDocument() async {
-    final File? scannedFile = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => Scaffold(
-          appBar: AppBar(title: const Text('Scan Document')),
-          body: DocumentScanner(
-            onSave: (Uint8List imageBytes) async {
-              final directory = await getTemporaryDirectory();
-              final file = File(
-                  '${directory.path}/${DateTime.now().millisecondsSinceEpoch}.png');
-              await file.writeAsBytes(imageBytes);
-              Navigator.pop(context, file);
-            },
-          ),
+    try {
+      final List<String> documentPaths = await DocumentScanner.instance.scanDocument(
+        options: DocumentScannerOptions(
+          documentScannerMode: DocumentScannerMode.full,
+          resultFormat: ResultFormat.pdf,
+          isGalleryImportAllowed: true,
         ),
-      ),
-    );
-    if (scannedFile != null) {
-      setState(() {
-        _selectedFile = scannedFile;
-      });
+      );
+      if (documentPaths.isNotEmpty) {
+        setState(() {
+          _selectedFile = File(documentPaths.first);
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to scan document: $e'),
+        ),
+      );
     }
   }
+
 
   void _clearSelection() {
     setState(() {

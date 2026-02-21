@@ -46,7 +46,8 @@ dependencies:
   open_file: ^3.3.2
   flutter_local_notifications: ^20.1.0
   dotted_border: ^2.1.0
-  flutter_document_scanner: ^1.1.2
+  google_mlkit_vision: ^0.10.0
+  google_mlkit_document_scanner: ^0.5.0
 
 dev_dependencies:
   flutter_test:
