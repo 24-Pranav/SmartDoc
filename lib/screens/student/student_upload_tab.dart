@@ -72,13 +72,9 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
 
   Future<void> _scanDocument() async {
     try {
-      final List<String> documentPaths = await DocumentScanner.instance.scanDocument(
-        options: DocumentScannerOptions(
-          documentScannerMode: DocumentScannerMode.full,
-          resultFormat: ResultFormat.pdf,
-          isGalleryImportAllowed: true,
-        ),
-      );
+      final scanner = DocumentScanner();
+      final List<String> documentPaths = await scanner.scanDocument();
+
       if (documentPaths.isNotEmpty) {
         setState(() {
           _selectedFile = File(documentPaths.first);
