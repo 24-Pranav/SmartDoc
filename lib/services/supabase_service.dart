@@ -7,7 +7,7 @@ class SupabaseService {
   // Unnecessary re-authentication removed. The client is authenticated at login.
 
   Future<String> uploadFile(File file, String documentId, String userId) async {
-    final fileExtension = file.path.split('.').last;
+    final fileExtension = file.path.split('.').last.toLowerCase();
     final fileName = '$documentId.$fileExtension';
     final filePath = '$userId/$fileName';
 
@@ -16,7 +16,11 @@ class SupabaseService {
       await _client.storage.from('documents').upload(
             filePath,
             file,
-            fileOptions: const FileOptions(upsert: true),
+            fileOptions: FileOptions(
+              upsert: true,
+              // Explicitly set the content type for PDF files to ensure proper rendering.
+              contentType: fileExtension == 'pdf' ? 'application/pdf' : null,
+            ),
           );
 
       final downloadUrl = _client.storage.from('documents').getPublicUrl(filePath);
