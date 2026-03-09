@@ -29,6 +29,9 @@ class _StudentChatTabState extends State<StudentChatTab> {
     final aiService = Provider.of<AIService>(context, listen: false);
     final response = await aiService.generateChatResponse(message);
 
+    // Log the AI's response to the console
+    print('AI Response: $response');
+
     setState(() {
       _messages.add({'sender': 'ai', 'text': response});
       _isLoading = false;
