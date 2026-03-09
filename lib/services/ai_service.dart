@@ -7,7 +7,7 @@ class AIService {
   AIService({required this.apiKey});
 
   Future<Map<String, dynamic>> verifyDocument(String text, String category, String userName) async {
-    final url = Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=$apiKey');
+    final url = Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=$apiKey');
 
     final prompt = '''
 You are an intelligent document verification system for a university.
@@ -106,7 +106,7 @@ Based on your analysis, provide the following information:
   }
 
   Future<String> generateChatResponse(String userMessage) async {
-    final url = Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=$apiKey');
+    final url = Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=$apiKey');
 
     final prompt = 'You are a helpful university assistant. Respond to the following user message: $userMessage';
 
