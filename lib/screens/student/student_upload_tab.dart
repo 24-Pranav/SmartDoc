@@ -23,8 +23,6 @@ class StudentUploadTab extends StatefulWidget {
 
 class _StudentUploadTabState extends State<StudentUploadTab> {
   final OcrService _ocrService = OcrService();
-  final AIService _aiService =
-  AIService(apiKey: 'YOUR_API_KEY_HERE'); // Move this to .env in production
   final SupabaseService _supabaseService = SupabaseService();
   final FirebaseService _firebaseService = FirebaseService();
   final Uuid _uuid = const Uuid();
@@ -135,6 +133,12 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
     });
 
     try {
+       final aiService = Provider.of<AIService>(context, listen: false);
+      if (aiService.apiKey == 'API_KEY_NOT_FOUND') {
+        throw Exception(
+            'API key not found. Please add it to your .env file.');
+      }
+
       final existingDocsQuery = await FirebaseFirestore.instance
           .collection('documents')
           .where('studentId', isEqualTo: user.id)
@@ -159,7 +163,7 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
             throw Exception('No text could be extracted from the image.');
           }
 
-          final aiResponse = await _aiService.verifyDocument(
+          final aiResponse = await aiService.verifyDocument(
               extractedText, _selectedCategory!, userName);
           final aiStatus =
           (aiResponse['status'] as String? ?? 'pending').toLowerCase();
