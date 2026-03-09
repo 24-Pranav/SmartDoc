@@ -57,13 +57,44 @@ Analyze the document and return ONLY a valid JSON object with your findings. The
       if (response.statusCode == 200) {
         final responseBody = jsonDecode(response.body);
         final content = responseBody['candidates'][0]['content']['parts'][0]['text'];
-        final cleanedContent = content.replaceAll('```json\n', '').replaceAll('\n```', '');
-        return jsonDecode(cleanedContent) as Map<String, dynamic>;
+        
+        // Attempt to extract the JSON object from the response
+        try {
+          final jsonString = _extractJson(content);
+          final decodedJson = jsonDecode(jsonString) as Map<String, dynamic>;
+          
+          // Validate the presence of required keys
+          if (decodedJson.containsKey('is_category_match') &&
+              decodedJson.containsKey('is_name_match') &&
+              decodedJson.containsKey('status') &&
+              decodedJson.containsKey('comments')) {
+            return decodedJson;
+          } else {
+            throw Exception('AI response is missing required fields.');
+          }
+        } catch (e) {
+          // If parsing fails, fall back to a default "needs review" state
+          return {
+            'is_category_match': false,
+            'is_name_match': false,
+            'status': 'rejected',
+            'comments': 'AI verification failed. Manual review required. Reason: Unable to parse AI response.',
+          };
+        }
       } else {
         throw Exception('AI service failed with status ${response.statusCode}: ${response.body}');
       }
     } catch (e) {
       throw Exception('An error occurred during AI verification: $e');
     }
+  }
+
+  String _extractJson(String text) {
+    final jsonStartIndex = text.indexOf('{');
+    final jsonEndIndex = text.lastIndexOf('}');
+    if (jsonStartIndex != -1 && jsonEndIndex != -1) {
+      return text.substring(jsonStartIndex, jsonEndIndex + 1);
+    }
+    throw Exception('No JSON object found in the AI response.');
   }
 }
