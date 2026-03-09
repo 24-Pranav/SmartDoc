@@ -7,6 +7,7 @@ import 'student_home_tab.dart';
 import 'student_notifications_tab.dart';
 import 'student_profile_tab.dart';
 import 'student_upload_tab.dart';
+import 'student_chat_tab.dart'; // Import the new chat tab
 
 class StudentDashboardScreen extends StatefulWidget {
   final int initialIndex;
@@ -25,9 +26,11 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
     _selectedIndex = widget.initialIndex;
   }
 
+  // Add the StudentChatTab to the list of widgets
   final List<Widget> _widgetOptions = <Widget>[
     const StudentHomeTab(),
     const StudentUploadTab(),
+    StudentChatTab(), // Add the chat tab here
     const StudentNotificationsTab(),
     const StudentProfileTab(),
   ];
@@ -48,6 +51,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
             _selectedIndex = index;
           });
         },
+        // Add the chat icon to the bottom navigation bar
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home),
@@ -56,6 +60,10 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.cloud_upload),
             label: 'Upload',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.chat),
+            label: 'Chat',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.notifications),

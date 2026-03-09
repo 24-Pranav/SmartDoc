@@ -7,28 +7,20 @@ class AIService {
   AIService({required this.apiKey});
 
   Future<Map<String, dynamic>> verifyDocument(String text, String category, String userName) async {
-    // DEFINITIVE FIX: This combines the correct v1beta endpoint with a compatible model and a valid request body.
-    // This resolves all previous 'model not found' and 'invalid payload' errors.
     final url = Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=$apiKey');
 
     final prompt = '''
-You are an intelligent document verification system for a university. Your task is to analyze the extracted OCR text from a student's document and determine if it should be approved or rejected.
-
-**Student Information:**
-- Name: "$userName"
-
-**Document to Verify:**
-- Provided Category: "$category"
+You are an intelligent document verification system for a university.
+Analyze the extracted OCR text from the student's document and determine if it should be approved or rejected.
+- Student Name: "$userName"
+- Document Category: "$category"
 - Extracted Text: """$text"""
 
-**Your Task:**
-Analyze the document and return ONLY a valid JSON object with your findings. The JSON object must have the following structure and nothing else:
-{
-  "is_category_match": boolean,
-  "is_name_match": boolean,
-  "status": "approved" | "rejected",
-  "comments": "Your detailed explanation for the decision. Mention what matched and what didn't."
-}
+Based on your analysis, provide the following information:
+- is_category_match: Does the document content match the provided category?
+- is_name_match: Does the student's name appear in the document?
+- status: "approved" or "rejected".
+- comments: Your detailed explanation for the decision.
 ''';
 
     final requestBody = jsonEncode({
@@ -38,6 +30,17 @@ Analyze the document and return ONLY a valid JSON object with your findings. The
       "generationConfig": {
         "temperature": 0.2,
         "maxOutputTokens": 2048,
+        "responseMimeType": "application/json",
+        "responseSchema": {
+          "type": "object",
+          "properties": {
+            "is_category_match": {"type": "boolean"},
+            "is_name_match": {"type": "boolean"},
+            "status": {"type": "string"},
+            "comments": {"type": "string"}
+          },
+          "required": ["is_category_match", "is_name_match", "status", "comments"]
+        }
       },
       "safetySettings": [
         {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
@@ -56,45 +59,87 @@ Analyze the document and return ONLY a valid JSON object with your findings. The
 
       if (response.statusCode == 200) {
         final responseBody = jsonDecode(response.body);
-        final content = responseBody['candidates'][0]['content']['parts'][0]['text'];
-        
-        // Attempt to extract the JSON object from the response
-        try {
-          final jsonString = _extractJson(content);
-          final decodedJson = jsonDecode(jsonString) as Map<String, dynamic>;
-          
-          // Validate the presence of required keys
-          if (decodedJson.containsKey('is_category_match') &&
-              decodedJson.containsKey('is_name_match') &&
-              decodedJson.containsKey('status') &&
-              decodedJson.containsKey('comments')) {
-            return decodedJson;
-          } else {
-            throw Exception('AI response is missing required fields.');
-          }
-        } catch (e) {
-          // If parsing fails, fall back to a default "needs review" state
+
+        if (responseBody['candidates'] == null || (responseBody['candidates'] as List).isEmpty) {
           return {
+            'status': 'pending',
+            'comments': 'AI verification failed: Model did not return a response. Sent for faculty review.',
             'is_category_match': false,
             'is_name_match': false,
-            'status': 'rejected',
-            'comments': 'AI verification failed. Manual review required. Reason: Unable to parse AI response.',
+          };
+        }
+
+        final content = responseBody['candidates'][0]['content']['parts'][0]['text'];
+
+        try {
+          final decodedJson = jsonDecode(content) as Map<String, dynamic>;
+
+          if (decodedJson.containsKey('status') && decodedJson.containsKey('comments')) {
+            return decodedJson;
+          } else {
+            throw Exception('AI response is missing required fields, even with schema.');
+          }
+        } catch (e) {
+          return {
+            'status': 'pending',
+            'comments': 'AI verification failed: Could not parse model JSON response. Sent for faculty review. Error: $e',
+            'is_category_match': false,
+            'is_name_match': false,
           };
         }
       } else {
-        throw Exception('AI service failed with status ${response.statusCode}: ${response.body}');
+        return {
+          'status': 'pending',
+          'comments': 'AI verification service failed with status ${response.statusCode}. Sent for faculty review. Body: ${response.body}',
+          'is_category_match': false,
+          'is_name_match': false,
+        };
       }
     } catch (e) {
-      throw Exception('An error occurred during AI verification: $e');
+      return {
+        'status': 'pending',
+        'comments': 'An error occurred during AI verification: $e. Sent for faculty review.',
+        'is_category_match': false,
+        'is_name_match': false,
+      };
     }
   }
 
-  String _extractJson(String text) {
-    final jsonStartIndex = text.indexOf('{');
-    final jsonEndIndex = text.lastIndexOf('}');
-    if (jsonStartIndex != -1 && jsonEndIndex != -1) {
-      return text.substring(jsonStartIndex, jsonEndIndex + 1);
+  Future<String> generateChatResponse(String userMessage) async {
+    final url = Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=$apiKey');
+
+    final prompt = 'You are a helpful university assistant. Respond to the following user message: $userMessage';
+
+    final requestBody = jsonEncode({
+      "contents": [
+        {"parts": [{"text": prompt}]}
+      ],
+      "generationConfig": {
+        "temperature": 0.7,
+        "maxOutputTokens": 2048,
+      }
+    });
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: requestBody,
+      );
+
+      if (response.statusCode == 200) {
+        final responseBody = jsonDecode(response.body);
+        if (responseBody['candidates'] != null && (responseBody['candidates'] as List).isNotEmpty) {
+          final content = responseBody['candidates'][0]['content']['parts'][0]['text'];
+          return content;
+        } else {
+          return 'Error: The model did not return a response.';
+        }
+      } else {
+        return 'Error: AI service failed with status ${response.statusCode}.\n${response.body}';
+      }
+    } catch (e) {
+      return 'An error occurred: $e';
     }
-    throw Exception('No JSON object found in the AI response.');
   }
 }
