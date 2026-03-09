@@ -5,6 +5,7 @@ import 'package:smart_doc/models/document.dart';
 import 'package:smart_doc/services/supabase_service.dart';
 import 'package:smart_doc/utils/show_message_box.dart';
 import 'package:smart_doc/widgets/status_badge.dart';
+import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
 class StudentHomeTab extends StatefulWidget {
   const StudentHomeTab({super.key});
@@ -15,7 +16,6 @@ class StudentHomeTab extends StatefulWidget {
 
 class _StudentHomeTabState extends State<StudentHomeTab> {
   bool _isLoading = false;
-  // Instantiate the service to use its methods
   final SupabaseService _supabaseService = SupabaseService();
 
   void _showDocumentDialog(BuildContext context, Document doc) {
@@ -26,63 +26,68 @@ class _StudentHomeTabState extends State<StudentHomeTab> {
       return;
     }
 
+    final isPdf = doc.url!.toLowerCase().endsWith('.pdf');
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return Dialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Text(
-                  doc.name,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  textAlign: TextAlign.center,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.7,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Text(
+                    doc.name,
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
-              ),
-              const Divider(height: 1),
-              InteractiveViewer(
-                panEnabled: true,
-                boundaryMargin: const EdgeInsets.all(20),
-                minScale: 0.5,
-                maxScale: 4,
-                child: Image.network(
-                  doc.url!,
-                  fit: BoxFit.contain,
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return const Padding(
-                      padding: EdgeInsets.all(32.0),
-                      child: Center(child: CircularProgressIndicator()),
-                    );
-                  },
-                  errorBuilder: (context, error, stackTrace) {
-                    return const Padding(
-                      padding: EdgeInsets.all(32.0),
-                      child: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.error, color: Colors.red, size: 50),
-                            SizedBox(height: 8),
-                            Text('Could not load document'),
-                          ],
+                const Divider(height: 1),
+                Expanded(
+                  child: isPdf
+                      ? SfPdfViewer.network(
+                          doc.url!,
+                          onDocumentLoadFailed: (details) {
+                            print("PDF Load Failed: ${details.description}");
+                          },
+                        )
+                      : InteractiveViewer(
+                          child: Image.network(
+                            doc.url!,
+                            fit: BoxFit.contain,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return const Center(child: CircularProgressIndicator());
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.error, color: Colors.red, size: 50),
+                                  SizedBox(height: 8),
+                                  Text('Could not load document'),
+                                ],
+                              );
+                            },
+                          ),
                         ),
-                      ),
-                    );
-                  },
                 ),
-              ),
-              const Divider(height: 1),
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: const Text('Close'),
-              ),
-            ],
+                const Divider(height: 1),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('Close'),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -145,12 +150,8 @@ class _StudentHomeTabState extends State<StudentHomeTab> {
     setState(() => _isLoading = true);
 
     try {
-      // Delete from Firestore
       await FirebaseFirestore.instance.collection('documents').doc(docId).delete();
-
-      // Refactored to use the SupabaseService for deletion
       await _supabaseService.deleteFile(url);
-
       if (mounted) {
         showMessageBox(context, 'Success', 'Document deleted successfully.');
       }
