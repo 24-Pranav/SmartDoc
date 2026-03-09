@@ -12,6 +12,8 @@ import 'package:smart_doc/supabase_options.dart'; // Import the Supabase options
 import 'firebase_options.dart';
 import 'dart:developer';
 import 'package:smart_doc/theme.dart';
+import 'package:smart_doc/services/ai_service.dart'; // Import the AIService
+import 'package:smart_doc/gemini_options.dart'; // Import the Gemini options
 
 // This function handles background messages
 @pragma('vm:entry-point')
@@ -42,8 +44,13 @@ void main() async {
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
   runApp(
-    ChangeNotifierProvider(
-      create: (context) => UserProvider(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) => UserProvider()),
+        Provider<AIService>(
+          create: (_) => AIService(apiKey: GeminiOptions.apiKey),
+        ),
+      ],
       child: const MyApp(),
     ),
   );
@@ -138,24 +145,11 @@ class _MyAppState extends State<MyApp> {
     });
   }
 
-//   @override
-//   Widget build(BuildContext context) {
-//     return MaterialApp(
-//       title: 'SmartDoc',
-//       theme: ThemeData(
-//         primarySwatch: Colors.blue,
-//       ),
-//       home: const SplashScreen(),
-//       debugShowCheckedModeBanner: false,
-//     );
-//   }
-// }
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'SmartDoc',
-      theme: appTheme, // <-- ADD THIS LINE
+      theme: appTheme,
       home: const SplashScreen(),
       debugShowCheckedModeBanner: false,
     );
