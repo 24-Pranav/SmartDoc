@@ -8,7 +8,9 @@ class SupabaseService {
 
   Future<String> uploadFile(File file, String documentId, String userId) async {
     final fileExtension = file.path.split('.').last.toLowerCase();
-    final fileName = '$documentId.$fileExtension';
+    // Add a timestamp to the file path to act as a cache-buster.
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final fileName = '$documentId-$timestamp.$fileExtension';
     final filePath = '$userId/$fileName';
 
     try {

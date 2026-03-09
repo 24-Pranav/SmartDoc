@@ -1,5 +1,6 @@
 import 'package:smart_doc/models/document.dart';
 import 'package:flutter/material.dart';
+import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import '../../extensions/string_extension.dart';
 
 class DocumentDetailScreen extends StatelessWidget {
@@ -10,6 +11,7 @@ class DocumentDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final comments = document.comments;
+    final isPdf = document.url?.toLowerCase().endsWith('.pdf') ?? false;
 
     return Scaffold(
       appBar: AppBar(title: Text(document.name)),
@@ -26,7 +28,11 @@ class DocumentDetailScreen extends StatelessWidget {
             Expanded(
               child: InteractiveViewer(
                 child: Center(
-                  child: document.url != null ? Image.network(document.url!) : const Text('No preview available'),
+                  child: document.url != null
+                      ? isPdf
+                          ? SfPdfViewer.network(document.url!)
+                          : Image.network(document.url!)
+                      : const Text('No preview available'),
                 ),
               ),
             ),
