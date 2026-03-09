@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../models/user.dart';
 import '../../services/ai_service.dart';
 
 class StudentChatTab extends StatefulWidget {
@@ -10,8 +9,16 @@ class StudentChatTab extends StatefulWidget {
 
 class _StudentChatTabState extends State<StudentChatTab> {
   final _messageController = TextEditingController();
+  final _scrollController = ScrollController();
   final List<Map<String, String>> _messages = [];
   bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _messageController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   void _sendMessage() async {
     final message = _messageController.text.trim();
@@ -25,16 +32,39 @@ class _StudentChatTabState extends State<StudentChatTab> {
     });
 
     _messageController.clear();
+    _scrollToBottom();
 
-    final aiService = Provider.of<AIService>(context, listen: false);
-    final response = await aiService.generateChatResponse(message);
+    try {
+      final aiService = Provider.of<AIService>(context, listen: false);
+      final response = await aiService.generateChatResponse(message);
 
-    // Log the AI's response to the console
-    print('AI Response: $response');
+      print('AI Response: $response'); // Keep logging for now
 
-    setState(() {
-      _messages.add({'sender': 'ai', 'text': response});
-      _isLoading = false;
+      setState(() {
+        _messages.add({'sender': 'ai', 'text': response});
+      });
+    } catch (e) {
+      print('Error in _sendMessage: $e');
+      setState(() {
+        _messages.add({'sender': 'ai', 'text': 'Sorry, an error occurred.'});
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+      _scrollToBottom();
+    }
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
     });
   }
 
@@ -48,6 +78,7 @@ class _StudentChatTabState extends State<StudentChatTab> {
         children: [
           Expanded(
             child: ListView.builder(
+              controller: _scrollController, // Use the scroll controller
               padding: const EdgeInsets.all(8.0),
               itemCount: _messages.length,
               itemBuilder: (context, index) {
