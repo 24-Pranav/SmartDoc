@@ -9,6 +9,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide User;
 import 'package:smart_doc/supabase_options.dart'; // Import the Supabase options
+import 'package:flutter_dotenv/flutter_dotenv.dart'; // Import flutter_dotenv
 import 'firebase_options.dart';
 import 'dart:developer';
 import 'package:smart_doc/theme.dart';
@@ -25,6 +26,10 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load environment variables
+  await dotenv.load(fileName: ".env");
+
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );

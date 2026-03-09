@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/ai_service.dart';
+import 'dart:developer';
 
 class StudentChatTab extends StatefulWidget {
   @override
@@ -36,15 +37,25 @@ class _StudentChatTabState extends State<StudentChatTab> {
 
     try {
       final aiService = Provider.of<AIService>(context, listen: false);
+      if (aiService.apiKey == 'API_KEY_NOT_FOUND') {
+        setState(() {
+          _messages.add({
+            'sender': 'ai',
+            'text': 'It looks like the API key is missing. Please add your Gemini API key to the .env file at the root of the project and restart the app.'
+          });
+        });
+        return;
+      }
+      
       final response = await aiService.generateChatResponse(message);
 
-      print('AI Response: $response'); // Keep logging for now
+      log('AI Response: $response');
 
       setState(() {
         _messages.add({'sender': 'ai', 'text': response});
       });
     } catch (e) {
-      print('Error in _sendMessage: $e');
+      log('Error in _sendMessage: $e');
       setState(() {
         _messages.add({'sender': 'ai', 'text': 'Sorry, an error occurred.'});
       });
@@ -101,8 +112,8 @@ class _StudentChatTabState extends State<StudentChatTab> {
           ),
           if (_isLoading)
             Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: CircularProgressIndicator(),
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: LinearProgressIndicator(),
             ),
           Padding(
             padding: const EdgeInsets.all(8.0),
