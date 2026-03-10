@@ -1,4 +1,3 @@
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 // Represents a single event in the document's verification history.
@@ -136,5 +135,29 @@ class Document {
       verificationDate: safeTimestampParse(data['verification_date']),
       comments: data['comments'],
     );
+  }
+
+  // NEW: Converts the Document object into a Map for Firestore.
+  Map<String, dynamic> toFirestore() {
+    return {
+      'doc_name': name,
+      'uploader_name': studentName,
+      'category': category,
+      'status': status.name,
+      'studentId': studentId,
+      'uploaded_at': Timestamp.fromDate(uploadedDate),
+      'doc_url': url,
+      // Add the new fields to the map, ensuring they are null if not set.
+      'ai_status': aiStatus?.name,
+      'ai_comment': aiComment,
+      'faculty_status': facultyStatus?.name,
+      'faculty_comment': facultyComment,
+      'confidence_score': confidenceScore,
+      // Convert the timeline events back to a list of maps.
+      'timeline': timeline.map((event) => event.toMap()).toList(),
+      'verified_by_user_id': verifiedByUserId,
+      'verification_date': verificationDate != null ? Timestamp.fromDate(verificationDate!) : null,
+      'comments': comments,
+    };
   }
 }
