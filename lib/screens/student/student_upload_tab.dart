@@ -1,5 +1,5 @@
-
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -106,6 +106,28 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
     });
   }
 
+  // NEW: More reliable function to get the file type by reading file content (magic bytes).
+  Future<String> _getFileExtension(File file) async {
+    final Uint8List bytes = await file.readAsBytes();
+    if (bytes.length > 4) {
+      final header = bytes.sublist(0, 4);
+      // Check for JPEG (FF D8 FF E0)
+      if (header[0] == 0xFF && header[1] == 0xD8 && header[2] == 0xFF) {
+        return 'jpeg';
+      }
+      // Check for PNG (89 50 4E 47)
+      if (header[0] == 0x89 && header[1] == 0x50 && header[2] == 0x4E && header[3] == 0x47) {
+        return 'png';
+      }
+      // Check for PDF (25 50 44 46)
+      if (header[0] == 0x25 && header[1] == 0x50 && header[2] == 0x44 && header[3] == 0x46) {
+        return 'pdf';
+      }
+    }
+    // Fallback to path if magic bytes don't match
+    return file.path.split('.').last.toLowerCase();
+  }
+
   Future<void> _uploadAndProcessFile() async {
     if (_selectedCategory == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -133,7 +155,7 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
     });
 
     try {
-       final aiService = Provider.of<AIService>(context, listen: false);
+      final aiService = Provider.of<AIService>(context, listen: false);
       if (aiService.apiKey == 'API_KEY_NOT_FOUND') {
         throw Exception(
             'API key not found. Please add it to your .env file.');
@@ -150,46 +172,69 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
       final String documentId =
       isUpdating ? existingDocsQuery.docs.first.id : _uuid.v4();
 
-      String status;
-      String comments;
-      final String fileExtension =
-      _selectedFile!.path.split('.').last.toLowerCase();
+      // --- REVISED FILE HANDLING LOGIC ---
+      final String fileExtension = await _getFileExtension(_selectedFile!);
+      final String docName = '${_selectedCategory!}.$fileExtension';
+
+      String? aiStatusResult;
+      String? aiCommentResult;
+      String finalStatus;
+      String statusMsg;
+      final timelineEvents = <Map<String, dynamic>>[
+        {
+          'status': 'Document Uploaded',
+          'timestamp': Timestamp.now(),
+          'comment': 'Document has been uploaded by student.'
+        }
+      ];
 
       try {
+        String extractedText;
         if (['jpg', 'jpeg', 'png'].contains(fileExtension)) {
-          final extractedText =
-          await _ocrService.processImage(_selectedFile!);
-          if (extractedText.isEmpty) {
-            throw Exception('No text could be extracted from the image.');
-          }
-
-          final aiResponse = await aiService.verifyDocument(
-              extractedText, _selectedCategory!, userName);
-          final aiStatus =
-          (aiResponse['status'] as String? ?? 'pending').toLowerCase();
-
-          if (aiStatus == 'approved') {
-            status = 'approved';
-            comments = aiResponse['comments'] as String? ??
-                'Automatically approved by AI.';
-          } else if (aiStatus == 'rejected') {
-            status = 'rejected';
-            comments = aiResponse['comments'] as String? ??
-                'Automatically rejected by AI.';
-          } else {
-            // AI could not determine — send to faculty
-            status = 'pending';
-            comments = aiResponse['comments'] as String? ??
-                'AI could not verify. Sent for faculty review.';
-          }
+          extractedText = await _ocrService.processImage(_selectedFile!);
+        } else if (fileExtension == 'pdf') {
+          extractedText = await _ocrService.processPdf(_selectedFile!);
         } else {
-          status = 'pending';
-          comments = 'PDF requires manual faculty review.';
+          throw Exception('Unsupported file type: $fileExtension. Please upload a JPG, PNG, or PDF.');
         }
+
+        if (extractedText.isEmpty) {
+          throw Exception('No text could be extracted from the document.');
+        }
+
+        final aiResponse = await aiService.verifyDocument(
+            extractedText, _selectedCategory!, userName);
+
+        aiStatusResult = (aiResponse['status'] as String? ?? 'pending').toLowerCase();
+        aiCommentResult = aiResponse['comments'] as String?;
+
+        if (aiStatusResult == 'approved') {
+          finalStatus = 'approved';
+          statusMsg = '✅ Document automatically approved by AI!';
+        } else if (aiStatusResult == 'rejected') {
+          finalStatus = 'rejected';
+          statusMsg = '❌ Document automatically rejected by AI. Check comments.';
+        } else {
+          finalStatus = 'pending';
+          statusMsg = '📄 AI could not verify. Sent for faculty review.';
+        }
+
+        timelineEvents.add({
+          'status': 'AI Review Complete',
+          'timestamp': Timestamp.now(),
+          'comment': aiCommentResult ?? 'AI analysis performed.',
+        });
+
       } catch (e) {
-        status = 'pending';
-        comments =
-        'Verification failed. Manual review required. ${e.toString()}';
+        finalStatus = 'pending';
+        aiStatusResult = 'pending';
+        aiCommentResult = 'Verification failed during processing. Manual review required: ${e.toString()}';
+        timelineEvents.add({
+          'status': 'AI Verification Failed',
+          'timestamp': Timestamp.now(),
+          'comment': 'An error occurred during automated checks.',
+        });
+        statusMsg = '⚠️ AI check failed. Sent for manual faculty review.';
       }
 
       final downloadUrl =
@@ -205,18 +250,16 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
         'category': _selectedCategory,
         'doc_url': downloadUrl,
         'uploaded_at': Timestamp.now(),
-        'status': status,
-        'comments': comments,
+        'doc_name': docName, // Use the new, reliable document name
         'isArchived': false,
-        'doc_name': _selectedFile!.path.split('/').last,
-      });
+        'status': finalStatus,
+        'ai_status': aiStatusResult,
+        'ai_comment': aiCommentResult,
+        'timeline': timelineEvents,
+        'comments': null,
+      }, SetOptions(merge: true));
 
       if (mounted) {
-        final statusMsg = status == 'approved'
-            ? '✅ Document approved by AI!'
-            : status == 'rejected'
-                ? '❌ Document rejected by AI. Check comments for details.'
-                : '⏳ Document sent for faculty review.';
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text(isUpdating
                 ? 'Document updated. $statusMsg'
@@ -272,7 +315,7 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
             ),
             const SizedBox(height: 12),
             const Text(
-              'Images (JPG, PNG) will be verified automatically. PDFs will be sent for faculty review.',
+              'All documents will now be verified automatically.',
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.black54,

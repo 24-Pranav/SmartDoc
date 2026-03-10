@@ -29,7 +29,7 @@ class _StudentHomeTabState extends State<StudentHomeTab> {
       return;
     }
 
-    final isPdf = doc.url!.toLowerCase().endsWith('.pdf');
+    final isPdf = doc.name.toLowerCase().endsWith('.pdf');
 
     showDialog(
       context: context,
@@ -67,12 +67,12 @@ class _StudentHomeTabState extends State<StudentHomeTab> {
                           child: isPdf
                               ? SfPdfViewer.network(doc.url!)
                               : InteractiveViewer(
-                                  panEnabled: true,
-                                  boundaryMargin: const EdgeInsets.all(20),
-                                  minScale: 0.5,
-                                  maxScale: 4,
-                                  child: Image.network(doc.url!, fit: BoxFit.contain),
-                                ),
+                            panEnabled: true,
+                            boundaryMargin: const EdgeInsets.all(20),
+                            minScale: 0.5,
+                            maxScale: 4,
+                            child: Image.network(doc.url!, fit: BoxFit.contain),
+                          ),
                         ),
                         const Divider(),
                         // 2. The Feedback and Timeline Section
@@ -117,7 +117,7 @@ class _StudentHomeTabState extends State<StudentHomeTab> {
       },
     );
   }
-  
+
   // Helper widget to build the comment sections for AI and Faculty.
   Widget _buildCommentSection({required String title, required String comment, DocumentStatus? status}) {
     return Padding(
@@ -141,34 +141,35 @@ class _StudentHomeTabState extends State<StudentHomeTab> {
 
   // ... (rest of the code remains the same)
 
-  Widget _getLeadingIcon(String? url) {
-    if (url == null || url.isEmpty) {
+  Widget _getLeadingIcon(Document doc) {
+    if (doc.url == null || doc.url!.isEmpty) {
       return const Icon(Icons.article_outlined, size: 40);
     }
-
-    final lowercasedUrl = url.toLowerCase();
-    if (lowercasedUrl.endsWith('.jpg') || lowercasedUrl.endsWith('.jpeg') || lowercasedUrl.endsWith('.png')) {
+    final lowercasedName = doc.name.toLowerCase();
+    if (lowercasedName.endsWith('.jpg') || lowercasedName.endsWith('.jpeg') || lowercasedName.endsWith('.png')) {
       return SizedBox(
         width: 50,
         height: 50,
         child: ClipRRect(
           borderRadius: BorderRadius.circular(8.0),
           child: Image.network(
-            url,
+            doc.url!,
             fit: BoxFit.cover,
             loadingBuilder: (context, child, loadingProgress) {
               if (loadingProgress == null) return child;
               return const Center(child: CircularProgressIndicator());
             },
             errorBuilder: (context, error, stackTrace) {
-              return const Icon(Icons.image, color: Colors.red);
+              // This error builder will handle cases where the URL is not a valid image
+              return const Icon(Icons.broken_image, color: Colors.grey);
             },
           ),
         ),
       );
-    } else if (lowercasedUrl.endsWith('.pdf')) {
+    } else if (lowercasedName.endsWith('.pdf')) {
       return const Icon(Icons.picture_as_pdf, size: 40, color: Colors.red);
     } else {
+      // Fallback for items without a clear extension in their name
       return const Icon(Icons.article_outlined, size: 40);
     }
   }
@@ -263,7 +264,7 @@ class _StudentHomeTabState extends State<StudentHomeTab> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           child: ListTile(
                             contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
-                            leading: _getLeadingIcon(doc.url),
+                            leading: _getLeadingIcon(doc),
                             title: Text(doc.name, style: const TextStyle(fontWeight: FontWeight.bold)),
                             subtitle: Text('Category: ${doc.category}'),
                             trailing: Row(
