@@ -1,6 +1,8 @@
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 import 'package:smart_doc/models/document.dart';
 import 'package:smart_doc/services/supabase_service.dart';
 import 'package:smart_doc/utils/show_message_box.dart';
@@ -18,6 +20,7 @@ class _StudentHomeTabState extends State<StudentHomeTab> {
   bool _isLoading = false;
   final SupabaseService _supabaseService = SupabaseService();
 
+  // Shows the enhanced document details dialog with comments and timeline.
   void _showDocumentDialog(BuildContext context, Document doc) {
     if (doc.url == null || doc.url!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -26,73 +29,89 @@ class _StudentHomeTabState extends State<StudentHomeTab> {
       return;
     }
 
-    final isPdf = doc.url!.toLowerCase().endsWith('.pdf');
-
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return Dialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(context).size.height * 0.7,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Text(
-                    doc.name,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Text(
+                  doc.name,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              const Divider(height: 1),
+              // Flexible container for the main content to allow scrolling.
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Display AI comments if available.
+                      if (doc.aiComment != null && doc.aiComment!.isNotEmpty)
+                        _buildCommentSection(
+                          title: "AI Verification",
+                          comment: doc.aiComment!,
+                          status: doc.aiStatus,
+                        ),
+                      // Display Faculty comments if available.
+                      if (doc.facultyComment != null && doc.facultyComment!.isNotEmpty)
+                        _buildCommentSection(
+                          title: "Faculty Review",
+                          comment: doc.facultyComment!,
+                          status: doc.facultyStatus,
+                        ),
+                      const SizedBox(height: 16),
+                      // Display the verification timeline.
+                      const Text("Verification Timeline", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      VerificationTimeline(timeline: doc.timeline),
+                    ],
                   ),
                 ),
-                const Divider(height: 1),
-                Expanded(
-                  child: isPdf
-                      ? SfPdfViewer.network(
-                          doc.url!,
-                          onDocumentLoadFailed: (details) {
-                            print("PDF Load Failed: ${details.description}");
-                          },
-                        )
-                      : InteractiveViewer(
-                          child: Image.network(
-                            doc.url!,
-                            fit: BoxFit.contain,
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return const Center(child: CircularProgressIndicator());
-                            },
-                            errorBuilder: (context, error, stackTrace) {
-                              return const Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.error, color: Colors.red, size: 50),
-                                  SizedBox(height: 8),
-                                  Text('Could not load document'),
-                                ],
-                              );
-                            },
-                          ),
-                        ),
-                ),
-                const Divider(height: 1),
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  child: const Text('Close'),
-                ),
-              ],
-            ),
+              ),
+              const Divider(height: 1),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Close'),
+              ),
+            ],
           ),
         );
       },
     );
   }
+  
+  // Helper widget to build the comment sections for AI and Faculty.
+  Widget _buildCommentSection({required String title, required String comment, DocumentStatus? status}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const SizedBox(width: 8),
+              if (status != null) StatusBadge(status: status), // Shows a status chip (e.g., Rejected)
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(comment, style: const TextStyle(fontSize: 14, fontStyle: FontStyle.italic)),
+        ],
+      ),
+    );
+  }
+
+  // ... (rest of the code remains the same)
 
   Widget _getLeadingIcon(String? url) {
     if (url == null || url.isEmpty) {
@@ -248,6 +267,70 @@ class _StudentHomeTabState extends State<StudentHomeTab> {
             ),
         ],
       ),
+    );
+  }
+}
+
+// A new, reusable widget to display the verification timeline.
+class VerificationTimeline extends StatelessWidget {
+  final List<TimelineEvent> timeline;
+
+  const VerificationTimeline({super.key, required this.timeline});
+
+  @override
+  Widget build(BuildContext context) {
+    // If the timeline is empty, show a message indicating the process has just started.
+    if (timeline.isEmpty) {
+      return const Text("Document uploaded. Pending review.");
+    }
+
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(), // The timeline is inside a scrollable dialog.
+      itemCount: timeline.length,
+      itemBuilder: (context, index) {
+        final event = timeline[index];
+        final isLastEvent = index == timeline.length - 1;
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // The vertical line and icon for the timeline.
+            Column(
+              children: [
+                Icon(
+                  isLastEvent ? Icons.check_circle : Icons.radio_button_checked,
+                  color: isLastEvent ? Colors.green : Colors.blue,
+                  size: 20,
+                ),
+                if (!isLastEvent)
+                  Container(
+                    width: 2,
+                    height: 40,
+                    color: Colors.blue,
+                  ),
+              ],
+            ),
+            const SizedBox(width: 12),
+            // The details of the timeline event.
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(event.status, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  Text(DateFormat.yMMMd().add_jm().format(event.timestamp), style: const TextStyle(color: Colors.grey)),
+                  if (event.comment != null && event.comment!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4.0),
+                      child: Text(event.comment!, style: const TextStyle(fontStyle: FontStyle.italic)),
+                    ),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
