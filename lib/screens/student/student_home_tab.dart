@@ -20,7 +20,7 @@ class _StudentHomeTabState extends State<StudentHomeTab> {
   bool _isLoading = false;
   final SupabaseService _supabaseService = SupabaseService();
 
-  // Shows the enhanced document details dialog with comments and timeline.
+  // REVISED: Combines the document viewer with the new feedback and timeline sections.
   void _showDocumentDialog(BuildContext context, Document doc) {
     if (doc.url == null || doc.url!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -29,61 +29,89 @@ class _StudentHomeTabState extends State<StudentHomeTab> {
       return;
     }
 
+    final isPdf = doc.url!.toLowerCase().endsWith('.pdf');
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return Dialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: Text(
-                  doc.name,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              const Divider(height: 1),
-              // Flexible container for the main content to allow scrolling.
-              Flexible(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Display AI comments if available.
-                      if (doc.aiComment != null && doc.aiComment!.isNotEmpty)
-                        _buildCommentSection(
-                          title: "AI Verification",
-                          comment: doc.aiComment!,
-                          status: doc.aiStatus,
-                        ),
-                      // Display Faculty comments if available.
-                      if (doc.facultyComment != null && doc.facultyComment!.isNotEmpty)
-                        _buildCommentSection(
-                          title: "Faculty Review",
-                          comment: doc.facultyComment!,
-                          status: doc.facultyStatus,
-                        ),
-                      const SizedBox(height: 16),
-                      // Display the verification timeline.
-                      const Text("Verification Timeline", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 8),
-                      VerificationTimeline(timeline: doc.timeline),
-                    ],
+          // Use a constrained box to control the dialog's max height and allow scrolling.
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.8,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Text(
+                    doc.name,
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center,
                   ),
                 ),
-              ),
-              const Divider(height: 1),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Close'),
-              ),
-            ],
+                const Divider(height: 1),
+                // This Expanded widget makes the content area scrollable.
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // 1. The Document Viewer (Image or PDF)
+                        SizedBox(
+                          // Set a reasonable height for the viewer.
+                          height: MediaQuery.of(context).size.height * 0.4,
+                          child: isPdf
+                              ? SfPdfViewer.network(doc.url!)
+                              : InteractiveViewer(
+                                  panEnabled: true,
+                                  boundaryMargin: const EdgeInsets.all(20),
+                                  minScale: 0.5,
+                                  maxScale: 4,
+                                  child: Image.network(doc.url!, fit: BoxFit.contain),
+                                ),
+                        ),
+                        const Divider(),
+                        // 2. The Feedback and Timeline Section
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (doc.aiComment != null && doc.aiComment!.isNotEmpty)
+                                _buildCommentSection(
+                                  title: "AI Verification",
+                                  comment: doc.aiComment!,
+                                  status: doc.aiStatus,
+                                ),
+                              if (doc.facultyComment != null && doc.facultyComment!.isNotEmpty)
+                                _buildCommentSection(
+                                  title: "Faculty Review",
+                                  comment: doc.facultyComment!,
+                                  status: doc.facultyStatus,
+                                ),
+                              const SizedBox(height: 16),
+                              const Text("Verification Timeline",
+                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 8),
+                              VerificationTimeline(timeline: doc.timeline),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const Divider(height: 1),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Close'),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -281,7 +309,7 @@ class VerificationTimeline extends StatelessWidget {
   Widget build(BuildContext context) {
     // If the timeline is empty, show a message indicating the process has just started.
     if (timeline.isEmpty) {
-      return const Text("Document uploaded. Pending review.");
+      return const Text("Document uploaded. Pending initial review.");
     }
 
     return ListView.builder(
