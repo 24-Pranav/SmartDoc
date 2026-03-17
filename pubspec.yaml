@@ -19,6 +19,7 @@ dependencies:
   firebase_storage: ^13.0.5
   syncfusion_flutter_pdf: ^32.2.5
   path_provider: ^2.0.15
+  pdfx: ^2.5.0 # ADDED: The package for converting PDFs to images
   geocoding: ^4.0.0
   geolocator: ^14.0.2
   url_launcher: ^6.1.11
