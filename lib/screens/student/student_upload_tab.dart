@@ -106,25 +106,14 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
     });
   }
 
-  // NEW: More reliable function to get the file type by reading file content (magic bytes).
   Future<String> _getFileExtension(File file) async {
     final Uint8List bytes = await file.readAsBytes();
     if (bytes.length > 4) {
       final header = bytes.sublist(0, 4);
-      // Check for JPEG (FF D8 FF E0)
-      if (header[0] == 0xFF && header[1] == 0xD8 && header[2] == 0xFF) {
-        return 'jpeg';
-      }
-      // Check for PNG (89 50 4E 47)
-      if (header[0] == 0x89 && header[1] == 0x50 && header[2] == 0x4E && header[3] == 0x47) {
-        return 'png';
-      }
-      // Check for PDF (25 50 44 46)
-      if (header[0] == 0x25 && header[1] == 0x50 && header[2] == 0x44 && header[3] == 0x46) {
-        return 'pdf';
-      }
+      if (header[0] == 0xFF && header[1] == 0xD8 && header[2] == 0xFF) return 'jpeg';
+      if (header[0] == 0x89 && header[1] == 0x50 && header[2] == 0x4E && header[3] == 0x47) return 'png';
+      if (header[0] == 0x25 && header[1] == 0x50 && header[2] == 0x44 && header[3] == 0x46) return 'pdf';
     }
-    // Fallback to path if magic bytes don't match
     return file.path.split('.').last.toLowerCase();
   }
 
@@ -157,8 +146,7 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
     try {
       final aiService = Provider.of<AIService>(context, listen: false);
       if (aiService.apiKey == 'API_KEY_NOT_FOUND') {
-        throw Exception(
-            'API key not found. Please add it to your .env file.');
+        throw Exception('API key not found. Please add it to your .env file.');
       }
 
       final existingDocsQuery = await FirebaseFirestore.instance
@@ -172,7 +160,6 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
       final String documentId =
       isUpdating ? existingDocsQuery.docs.first.id : _uuid.v4();
 
-      // --- REVISED FILE HANDLING LOGIC ---
       final String fileExtension = await _getFileExtension(_selectedFile!);
       final String docName = '${_selectedCategory!}.$fileExtension';
 
@@ -226,15 +213,27 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
         });
 
       } catch (e) {
+        // --- REVISED: More intelligent error handling for AI service failures ---
         finalStatus = 'pending';
         aiStatusResult = 'pending';
-        aiCommentResult = 'Verification failed during processing. Manual review required: ${e.toString()}';
+        String errorMessage = e.toString().toLowerCase();
+
+        if (errorMessage.contains('503') || errorMessage.contains('unavailable')) {
+            aiCommentResult = 'The AI verification service is temporarily busy. Your document has been sent for manual faculty review.';
+            statusMsg = '⚠️ AI service is busy. Document sent for manual review.';
+        } else if (errorMessage.contains('no text')) {
+            aiCommentResult = 'No text could be extracted from the document, so it could not be verified automatically. It has been sent for manual review.';
+            statusMsg = '⚠️ Could not read document. Sent for manual review.';
+        } else {
+            aiCommentResult = 'An unexpected error occurred during AI verification. Manual review is required.';
+            statusMsg = '⚠️ AI check failed. Sent for manual faculty review.';
+        }
+
         timelineEvents.add({
           'status': 'AI Verification Failed',
           'timestamp': Timestamp.now(),
-          'comment': 'An error occurred during automated checks.',
+          'comment': aiCommentResult, // Use the new, user-friendly comment
         });
-        statusMsg = '⚠️ AI check failed. Sent for manual faculty review.';
       }
 
       final downloadUrl =
@@ -250,7 +249,7 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
         'category': _selectedCategory,
         'doc_url': downloadUrl,
         'uploaded_at': Timestamp.now(),
-        'doc_name': docName, // Use the new, reliable document name
+        'doc_name': docName,
         'isArchived': false,
         'status': finalStatus,
         'ai_status': aiStatusResult,
