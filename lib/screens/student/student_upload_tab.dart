@@ -219,14 +219,14 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
         String errorMessage = e.toString().toLowerCase();
 
         if (errorMessage.contains('503') || errorMessage.contains('unavailable')) {
-            aiCommentResult = 'The AI verification service is temporarily busy. Your document has been sent for manual faculty review.';
-            statusMsg = '⚠️ AI service is busy. Document sent for manual review.';
+          aiCommentResult = 'The AI verification service is temporarily busy. Your document has been sent for manual faculty review.';
+          statusMsg = '⚠️ AI service is busy. Document sent for manual review.';
         } else if (errorMessage.contains('no text')) {
-            aiCommentResult = 'No text could be extracted from the document, so it could not be verified automatically. It has been sent for manual review.';
-            statusMsg = '⚠️ Could not read document. Sent for manual review.';
+          aiCommentResult = 'No text could be extracted from the document, so it could not be verified automatically. It has been sent for manual review.';
+          statusMsg = '⚠️ Could not read document. Sent for manual review.';
         } else {
-            aiCommentResult = 'An unexpected error occurred during AI verification. Manual review is required.';
-            statusMsg = '⚠️ AI check failed. Sent for manual faculty review.';
+          aiCommentResult = 'An unexpected error occurred during AI verification. Manual review is required.';
+          statusMsg = '⚠️ AI check failed. Sent for manual faculty review.';
         }
 
         timelineEvents.add({
@@ -297,21 +297,15 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text('Upload Document'),
+        centerTitle: true,
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
-              'Upload Document',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-              textAlign: TextAlign.center,
-            ),
             const SizedBox(height: 12),
             const Text(
               'All documents will now be verified automatically.',

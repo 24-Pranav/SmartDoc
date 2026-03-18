@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_doc/providers/user_provider.dart';
-import 'package:smart_doc/widgets/custom_app_bar.dart';
 import 'package:smart_doc/widgets/custom_bottom_nav_bar.dart';
 import 'student_home_tab.dart';
 import 'student_notifications_tab.dart';
@@ -37,12 +36,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = Provider.of<UserProvider>(context).user;
     return Scaffold(
-      appBar: CustomAppBar(
-        title: 'Welcome, ${user?.name ?? 'Student'}!',
-        showLogout: true,
-      ),
       body: _widgetOptions.elementAt(_selectedIndex),
       bottomNavigationBar: CustomBottomNavBar(
         selectedIndex: _selectedIndex,

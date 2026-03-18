@@ -55,74 +55,68 @@ class _StudentProfileTabState extends State<StudentProfileTab> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _currentUser == null
-              ? const Center(child: Text('Profile not found.'))
-              : CustomScrollView(
-                  slivers: [
-                    SliverAppBar(
-                      expandedHeight: 250.0,
-                      pinned: true,
-                      floating: false,
-                      // Removed hardcoded background color to apply the theme
-                      // Removed the actions to delete the extra logout button
-                      flexibleSpace: FlexibleSpaceBar(
-                        background: _buildProfileHeader(context, _currentUser!),
-                      ),
-                    ),
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: _buildProfileInfoCard(_currentUser!),
-                      ),
-                    ),
-                  ],
-                ),
+  Future<void> _logout() async {
+    await FirebaseAuth.instance.signOut();
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => const RoleSelectionScreen()),
+          (Route<dynamic> route) => false,
     );
   }
 
-  Widget _buildProfileHeader(BuildContext context, Student currentUser) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Theme.of(context).primaryColor, Colors.blue.shade300],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ),
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Profile'),
+        centerTitle: true,
       ),
-      child: Center(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _currentUser == null
+          ? const Center(child: Text('Profile not found.'))
+          : SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircleAvatar(
-              radius: 50,
-              backgroundImage: currentUser.photoURL != null ? NetworkImage(currentUser.photoURL!) : null,
-              child: currentUser.photoURL == null ? const Icon(Icons.person, size: 50) : null,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              currentUser.name,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              currentUser.email,
-              style: TextStyle(fontSize: 16, color: Colors.white.withOpacity(0.9)),
-            ),
+            _buildProfileHeader(context, _currentUser!),
+            const SizedBox(height: 24),
+            _buildProfileInfoCard(_currentUser!),
+            const SizedBox(height: 24),
+            _buildLogoutButton(context),
           ],
         ),
       ),
     );
   }
 
+  Widget _buildProfileHeader(BuildContext context, Student currentUser) {
+    final theme = Theme.of(context);
+    return Column(
+      children: [
+        CircleAvatar(
+          radius: 50,
+          backgroundColor: theme.colorScheme.surface,
+          backgroundImage: currentUser.photoURL != null ? NetworkImage(currentUser.photoURL!) : null,
+          child: currentUser.photoURL == null ? Icon(Icons.person, size: 50, color: theme.colorScheme.onSurface) : null,
+        ),
+        const SizedBox(height: 16),
+        Text(
+          currentUser.name,
+          style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          currentUser.email,
+          style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.secondary),
+        ),
+      ],
+    );
+  }
+
   Widget _buildProfileInfoCard(Student currentUser) {
     return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -149,8 +143,31 @@ class _StudentProfileTabState extends State<StudentProfileTab> {
           const SizedBox(width: 16),
           Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
           const Spacer(),
-          Text(value),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildLogoutButton(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        icon: const Icon(Icons.logout),
+        label: const Text('Logout'),
+        onPressed: _logout,
+        style: ElevatedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
       ),
     );
   }
