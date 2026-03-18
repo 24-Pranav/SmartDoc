@@ -156,9 +156,51 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
           .limit(1)
           .get();
 
-      final bool isUpdating = existingDocsQuery.docs.isNotEmpty;
-      final String documentId =
-      isUpdating ? existingDocsQuery.docs.first.id : _uuid.v4();
+      bool isReplacing = false;
+
+      if (existingDocsQuery.docs.isNotEmpty) {
+        final existingDocSnapshot = existingDocsQuery.docs.first;
+        final existingDoc = existingDocSnapshot.data();
+        if (existingDoc['status'] == 'approved') {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text(
+                  'This document is already approved. You cannot re-upload it.')));
+          setState(() {
+            _isUploading = false;
+          });
+          return;
+        } else {
+          isReplacing = true;
+          try {
+            if (existingDoc['doc_url'] != null) {
+              await _supabaseService.deleteFile(existingDoc['doc_url']);
+            }
+            await existingDocSnapshot.reference.delete();
+          } catch (e) {
+            if (mounted) {
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Error Updating Document'),
+                  content: Text(
+                      'Could not remove the previous document. Please try again. Error: $e'),
+                  actions: [
+                    TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('OK'))
+                  ],
+                ),
+              );
+            }
+            setState(() {
+              _isUploading = false;
+            });
+            return;
+          }
+        }
+      }
+
+      final String documentId = _uuid.v4();
 
       final String fileExtension = await _getFileExtension(_selectedFile!);
       final String docName = '${_selectedCategory!}.$fileExtension';
@@ -219,14 +261,14 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
         String errorMessage = e.toString().toLowerCase();
 
         if (errorMessage.contains('503') || errorMessage.contains('unavailable')) {
-          aiCommentResult = 'The AI verification service is temporarily busy. Your document has been sent for manual faculty review.';
-          statusMsg = '⚠️ AI service is busy. Document sent for manual review.';
+            aiCommentResult = 'The AI verification service is temporarily busy. Your document has been sent for manual faculty review.';
+            statusMsg = '⚠️ AI service is busy. Document sent for manual review.';
         } else if (errorMessage.contains('no text')) {
-          aiCommentResult = 'No text could be extracted from the document, so it could not be verified automatically. It has been sent for manual review.';
-          statusMsg = '⚠️ Could not read document. Sent for manual review.';
+            aiCommentResult = 'No text could be extracted from the document, so it could not be verified automatically. It has been sent for manual review.';
+            statusMsg = '⚠️ Could not read document. Sent for manual review.';
         } else {
-          aiCommentResult = 'An unexpected error occurred during AI verification. Manual review is required.';
-          statusMsg = '⚠️ AI check failed. Sent for manual faculty review.';
+            aiCommentResult = 'An unexpected error occurred during AI verification. Manual review is required.';
+            statusMsg = '⚠️ AI check failed. Sent for manual faculty review.';
         }
 
         timelineEvents.add({
@@ -256,11 +298,11 @@ class _StudentUploadTabState extends State<StudentUploadTab> {
         'ai_comment': aiCommentResult,
         'timeline': timelineEvents,
         'comments': null,
-      }, SetOptions(merge: true));
+      });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(isUpdating
+            content: Text(isReplacing
                 ? 'Document updated. $statusMsg'
                 : statusMsg)));
       }
