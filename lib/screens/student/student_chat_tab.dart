@@ -14,6 +14,13 @@ class _StudentChatTabState extends State<StudentChatTab> {
   final List<Map<String, String>> _messages = [];
   bool _isLoading = false;
 
+  final List<String> _suggestedPrompts = [
+    "What documents do I need to submit?",
+    "How do I check my document status?",
+    "Why was my document rejected?",
+    "What are the submission deadlines?",
+  ];
+
   @override
   void dispose() {
     _messageController.dispose();
@@ -21,18 +28,14 @@ class _StudentChatTabState extends State<StudentChatTab> {
     super.dispose();
   }
 
-  void _sendMessage() async {
-    final message = _messageController.text.trim();
-    if (message.isEmpty) {
-      return;
-    }
+  Future<void> _processMessage(String message) async {
+    if (message.isEmpty) return;
 
     setState(() {
       _messages.add({'sender': 'user', 'text': message});
       _isLoading = true;
     });
 
-    _messageController.clear();
     _scrollToBottom();
 
     try {
@@ -41,12 +44,13 @@ class _StudentChatTabState extends State<StudentChatTab> {
         setState(() {
           _messages.add({
             'sender': 'ai',
-            'text': 'It looks like the API key is missing. Please add your Gemini API key to the .env file at the root of the project and restart the app.'
+            'text':
+            'It looks like the API key is missing. Please add your Gemini API key to the .env file at the root of the project and restart the app.'
           });
         });
         return;
       }
-      
+
       final response = await aiService.generateChatResponse(message);
 
       log('AI Response: $response');
@@ -55,9 +59,12 @@ class _StudentChatTabState extends State<StudentChatTab> {
         _messages.add({'sender': 'ai', 'text': response});
       });
     } catch (e) {
-      log('Error in _sendMessage: $e');
+      log('Error processing message: $e');
       setState(() {
-        _messages.add({'sender': 'ai', 'text': 'Sorry, an error occurred.'});
+        _messages.add({
+          'sender': 'ai',
+          'text': 'Sorry, an unexpected error occurred. Please try again.'
+        });
       });
     } finally {
       setState(() {
@@ -65,6 +72,16 @@ class _StudentChatTabState extends State<StudentChatTab> {
       });
       _scrollToBottom();
     }
+  }
+
+  void _sendMessage() {
+    final message = _messageController.text.trim();
+    _messageController.clear();
+    _processMessage(message);
+  }
+
+  void _sendSuggestedPrompt(String prompt) {
+    _processMessage(prompt);
   }
 
   void _scrollToBottom() {
@@ -79,18 +96,61 @@ class _StudentChatTabState extends State<StudentChatTab> {
     });
   }
 
+  Widget _buildSuggestions() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+      child: Wrap(
+        spacing: 8.0,
+        runSpacing: 4.0,
+        alignment: WrapAlignment.center,
+        children: _suggestedPrompts.map((prompt) {
+          return ActionChip(
+            label: Text(prompt, style: const TextStyle(color: Colors.black87)),
+            onPressed: () => _sendSuggestedPrompt(prompt),
+            backgroundColor: Colors.white,
+            shape: StadiumBorder(side: BorderSide(color: Colors.grey.shade300)),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('University Assistant'),
+        title: const Text('University Assistant'),
         centerTitle: true,
       ),
       body: Column(
         children: [
           Expanded(
-            child: ListView.builder(
-              controller: _scrollController, // Use the scroll controller
+            child: _messages.isEmpty
+                ? Center(
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.support_agent, size: 80, color: Colors.grey),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Ask me anything!',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Or tap a suggestion below to get started.',
+                      style: TextStyle(fontSize: 16, color: Colors.black54),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                    _buildSuggestions(),
+                  ],
+                ),
+              ),
+            )
+                : ListView.builder(
+              controller: _scrollController,
               padding: const EdgeInsets.all(8.0),
               itemCount: _messages.length,
               itemBuilder: (context, index) {
@@ -102,7 +162,9 @@ class _StudentChatTabState extends State<StudentChatTab> {
                     margin: const EdgeInsets.symmetric(vertical: 4.0),
                     padding: const EdgeInsets.all(12.0),
                     decoration: BoxDecoration(
-                      color: isUserMessage ? Colors.blue[100] : Colors.grey[200],
+                      color: isUserMessage
+                          ? Theme.of(context).primaryColorLight
+                          : Colors.grey[200],
                       borderRadius: BorderRadius.circular(12.0),
                     ),
                     child: Text(message['text']!),
@@ -112,8 +174,8 @@ class _StudentChatTabState extends State<StudentChatTab> {
             ),
           ),
           if (_isLoading)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8.0),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8.0),
               child: LinearProgressIndicator(),
             ),
           Padding(
@@ -128,12 +190,13 @@ class _StudentChatTabState extends State<StudentChatTab> {
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(20.0),
                       ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16.0),
                     ),
                     onSubmitted: (value) => _sendMessage(),
                   ),
                 ),
                 IconButton(
-                  icon: Icon(Icons.send),
+                  icon: const Icon(Icons.send),
                   onPressed: _sendMessage,
                 ),
               ],
