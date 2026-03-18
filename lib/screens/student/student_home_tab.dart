@@ -221,7 +221,10 @@ class _StudentHomeTabState extends State<StudentHomeTab> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('My Documents')),
+      appBar: AppBar(
+        title: const Text('My Documents'),
+        centerTitle: true,
+      ),
       body: Stack(
         children: [
           Column(

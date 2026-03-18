@@ -84,6 +84,7 @@ class _StudentChatTabState extends State<StudentChatTab> {
     return Scaffold(
       appBar: AppBar(
         title: Text('University Assistant'),
+        centerTitle: true,
       ),
       body: Column(
         children: [
