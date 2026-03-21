@@ -11,8 +11,7 @@ class AIService {
 
   Future<Map<String, dynamic>> verifyDocument(
       String text, String category, String userName) async {
-    final url = Uri.parse(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey');
+    final url = Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey');
 
     final prompt = '''
 You are an intelligent document verification system for a university.
@@ -107,8 +106,7 @@ Based on your analysis, provide the following information in JSON format:
       };
     }).toList();
 
-    final url = Uri.parse(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey');
+    final url = Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey');
 
     final prompt = '''
 You are a specialized University Assistant AI for the "Smart Doc" mobile app. Your primary function is to help students with questions about their document submissions.
