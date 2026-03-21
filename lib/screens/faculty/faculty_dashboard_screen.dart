@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_doc/providers/user_provider.dart';
 import 'package:smart_doc/screens/admin/admin_categories_tab.dart';
+import 'package:smart_doc/screens/role_selection_screen.dart';
 
 import '../../widgets/custom_bottom_nav_bar.dart';
 import 'faculty_home_tab.dart';
@@ -35,10 +36,8 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = Provider.of<UserProvider>(context).user;
-
     return PopScope(
-      canPop: _selectedIndex == 0,
+      canPop: false,
       onPopInvoked: (bool didPop) {
         if (didPop) {
           return;
@@ -47,6 +46,11 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
           setState(() {
             _selectedIndex = 0;
           });
+        } else {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const RoleSelectionScreen()),
+            (Route<dynamic> route) => false,
+          );
         }
       },
       child: Scaffold(
