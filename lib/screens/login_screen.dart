@@ -25,6 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _isPasswordVisible = false;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -230,24 +231,34 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12.0),
-              borderSide: const BorderSide(color: Colors.blueAccent, width: 2.0),
+              borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2.0),
             ),
           ),
         ),
         const SizedBox(height: 16.0),
         TextFormField(
           controller: _passwordController,
-          obscureText: true,
+          obscureText: !_isPasswordVisible,
           decoration: InputDecoration(
             labelText: 'Password',
             hintText: 'password',
             prefixIcon: const Icon(Icons.lock_outline),
+            suffixIcon: IconButton(
+              icon: Icon(
+                _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+              ),
+              onPressed: () {
+                setState(() {
+                  _isPasswordVisible = !_isPasswordVisible;
+                });
+              },
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12.0),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12.0),
-              borderSide: const BorderSide(color: Colors.blueAccent, width: 2.0),
+              borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2.0),
             ),
           ),
         ),
@@ -259,7 +270,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: ElevatedButton(
                   onPressed: _login,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blueAccent,
+                    backgroundColor: Theme.of(context).primaryColor,
                     padding: const EdgeInsets.symmetric(vertical: 16.0),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12.0),
@@ -281,9 +292,9 @@ class _LoginScreenState extends State<LoginScreen> {
       children: [
         TextButton(
           onPressed: _resetPassword,
-          child: const Text(
+          child: Text(
             'Forgot Password?',
-            style: TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold),
+            style: TextStyle(color: Theme.of(context).primaryColor, fontWeight: FontWeight.bold),
           ),
         ),
         const SizedBox(height: 8.0),
@@ -316,9 +327,9 @@ class _LoginScreenState extends State<LoginScreen> {
         const Text("Don't have an account?"),
         TextButton(
           onPressed: onPressed,
-          child: const Text(
+          child: Text(
             'Sign Up',
-            style: TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold),
+            style: TextStyle(color: Theme.of(context).primaryColor, fontWeight: FontWeight.bold),
           ),
         ),
       ],
