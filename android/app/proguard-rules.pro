@@ -48,5 +48,9 @@
 -keep class com.google.android.gms.internal.mlkit_vision_text_common.** { *; }
 -dontwarn com.google.android.gms.internal.mlkit_vision_text_common.**
 
+# Google Play Core Library
+-keep class com.google.android.play.core.** { *; }
+-dontwarn com.google.android.play.core.**
+
 # Desugaring
 -dontwarn com.android.tools.desugar.runtime.**
