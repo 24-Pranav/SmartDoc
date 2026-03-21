@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:smart_doc/providers/user_provider.dart';
 import 'package:smart_doc/screens/admin/admin_categories_tab.dart';
 
-import '../../widgets/custom_app_bar.dart';
 import '../../widgets/custom_bottom_nav_bar.dart';
 import 'faculty_home_tab.dart';
 import 'faculty_verify_tab.dart';
@@ -23,47 +22,50 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
   final List<Widget> _widgetOptions = <Widget>[
     const FacultyHomeTab(),
     const FacultyVerifyTab(),
-    const AdminCategoriesTab(),
+    const AdminCategoriesTab(), // Assuming this is intentional for faculty
     const FacultyNotificationsTab(),
     const FacultyProfileTab(),
   ];
 
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = Provider.of<UserProvider>(context).user;
+
     return Scaffold(
-      appBar: CustomAppBar(
-        title: 'Welcome, ${user?.name ?? 'Faculty'}!',
-        showLogout: true,
-      ),
       body: _widgetOptions.elementAt(_selectedIndex),
-      // REMOVED the global FloatingActionButton from here
       bottomNavigationBar: CustomBottomNavBar(
         selectedIndex: _selectedIndex,
-        onItemTapped: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-        },
+        onItemTapped: _onItemTapped,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.home),
+            icon: Icon(Icons.home_outlined),
+            activeIcon: Icon(Icons.home),
             label: 'Home',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.verified_user),
+            icon: Icon(Icons.verified_outlined),
+            activeIcon: Icon(Icons.verified),
             label: 'Verify',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.category),
+            icon: Icon(Icons.category_outlined),
+            activeIcon: Icon(Icons.category),
             label: 'Categories',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.notifications),
+            icon: Icon(Icons.notifications_outlined),
+            activeIcon: Icon(Icons.notifications),
             label: 'Notifications',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.person),
+            icon: Icon(Icons.person_outline),
+            activeIcon: Icon(Icons.person),
             label: 'Profile',
           ),
         ],
