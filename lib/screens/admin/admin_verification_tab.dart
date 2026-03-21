@@ -145,7 +145,7 @@ class _AdminVerificationTabState extends State<AdminVerificationTab> {
       batch.update(userRef, {'isVerified': true});
 
       final facultyRef = FirebaseFirestore.instance.collection('faculty').doc(user.id);
-      batch.update(facultyRef, {'status': 'approved'});
+      batch.update(facultyRef, {'status': 'approved', 'isVerified': true});
 
       await batch.commit();
 

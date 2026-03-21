@@ -35,6 +35,7 @@ class AdminHomeTab extends StatelessWidget {
           final Map<String, int> uploadsByDay = data['uploadsByDay'];
           final Map<String, int> categoryCounts = data['categoryCounts'];
           final List<Document> overdueDocuments = data['overdueDocuments'];
+          final List<Document> recentRejections = data['recentRejections'];
 
           return _buildDashboard(
             context,
@@ -44,7 +45,8 @@ class AdminHomeTab extends StatelessWidget {
             statusCounts,
             uploadsByDay,
             categoryCounts,
-            overdueDocuments, 
+            overdueDocuments,
+            recentRejections,
           );
         },
       ),
@@ -60,8 +62,20 @@ class AdminHomeTab extends StatelessWidget {
         .where('status', isEqualTo: 'pending')
         .where('uploaded_at', isLessThan: DateTime.now().subtract(const Duration(hours: 48)))
         .get();
+    final recentRejectionsQuery = FirebaseFirestore.instance
+        .collection('documents')
+        .where('status', isEqualTo: 'rejected')
+        .orderBy('uploaded_at', descending: true)
+        .limit(5)
+        .get();
 
-    final results = await Future.wait([usersQuery, facultyQuery, documentsQuery, overdueDocumentsQuery]);
+    final results = await Future.wait([
+      usersQuery,
+      facultyQuery,
+      documentsQuery,
+      overdueDocumentsQuery,
+      recentRejectionsQuery
+    ]);
 
     final userDocs = (results[0] as QuerySnapshot).docs;
     final facultyDocs = (results[1] as QuerySnapshot).docs;
@@ -95,6 +109,11 @@ class AdminHomeTab extends StatelessWidget {
         .map((doc) => Document.fromFirestore(doc.data() as Map<String, dynamic>, doc.id))
         .toList();
 
+    final recentRejections = (results[4] as QuerySnapshot)
+        .docs
+        .map((doc) => Document.fromFirestore(doc.data() as Map<String, dynamic>, doc.id))
+        .toList();
+
     return {
       'studentCount': studentCount,
       'facultyCount': facultyCount,
@@ -103,6 +122,7 @@ class AdminHomeTab extends StatelessWidget {
       'uploadsByDay': uploadsByDay,
       'categoryCounts': categoryCounts,
       'overdueDocuments': overdueDocuments,
+      'recentRejections': recentRejections,
     };
   }
 
@@ -155,6 +175,7 @@ class AdminHomeTab extends StatelessWidget {
     Map<String, int> uploadsByDay,
     Map<String, int> categoryCounts,
     List<Document> overdueDocuments,
+    List<Document> recentRejections,
   ) {
     return ListView(
       padding: const EdgeInsets.all(16.0),
@@ -163,6 +184,9 @@ class AdminHomeTab extends StatelessWidget {
         const SizedBox(height: 24),
         if (overdueDocuments.isNotEmpty)
           _buildOverdueDocumentsCard(context, overdueDocuments),
+        const SizedBox(height: 24),
+        if (recentRejections.isNotEmpty)
+          _buildRecentRejectionsCard(context, recentRejections),
         const SizedBox(height: 24),
         _buildStatusPieChartCard(context, statusCounts),
         const SizedBox(height: 24),
@@ -211,6 +235,54 @@ class AdminHomeTab extends StatelessWidget {
                   leading: const Icon(Icons.warning_amber_rounded, color: Colors.orange),
                   title: Text(doc.name, style: const TextStyle(fontWeight: FontWeight.bold)),
                   subtitle: Text('Student: ${doc.studentName} | Uploaded: ${DateFormat.yMd().add_jm().format(doc.uploadedDate)}'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () async {
+                    final userDoc = await FirebaseFirestore.instance.collection('users').doc(doc.studentId).get();
+                    if (userDoc.exists) {
+                      final student = model.User.fromFirestore(userDoc.data()!, userDoc.id);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AdminUserDetailScreen(user: student),
+                        ),
+                      );
+                    }
+                  },
+                )),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecentRejectionsCard(BuildContext context, List<Document> documents) {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      color: Colors.amber.shade50,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Recent AI Rejections',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.amber.shade800,
+                  ),
+            ),
+            const SizedBox(height: 16),
+            ...documents.map((doc) => ListTile(
+                  leading: const Icon(Icons.smart_toy_outlined, color: Colors.orange),
+                  title: Text(doc.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Student: ${doc.studentName}'),
+                      Text('AI Comment: ${doc.aiComment ?? "N/A"}', style: const TextStyle(fontStyle: FontStyle.italic)),
+                    ],
+                  ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () async {
                     final userDoc = await FirebaseFirestore.instance.collection('users').doc(doc.studentId).get();

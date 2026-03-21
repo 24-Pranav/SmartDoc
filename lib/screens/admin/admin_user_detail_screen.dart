@@ -1,13 +1,27 @@
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:smart_doc/models/document.dart';
 import 'package:smart_doc/models/user.dart' as model;
 import 'package:smart_doc/screens/student/document_detail_screen.dart';
+import 'package:smart_doc/widgets/status_badge.dart';
 
 class AdminUserDetailScreen extends StatelessWidget {
   final model.User user;
 
   const AdminUserDetailScreen({super.key, required this.user});
+
+  IconData _getIconForFileType(String fileName) {
+    if (fileName.toLowerCase().endsWith('.pdf')) {
+      return Icons.picture_as_pdf;
+    } else if (fileName.toLowerCase().endsWith('.jpg') ||
+        fileName.toLowerCase().endsWith('.jpeg') ||
+        fileName.toLowerCase().endsWith('.png')) {
+      return Icons.image;
+    }
+    return Icons.description_outlined;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +43,7 @@ class AdminUserDetailScreen extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(
+            return Center(
               child: Text(
                 'This user has not uploaded any documents.',
                 style: TextStyle(fontSize: 16, color: Colors.grey),
@@ -51,10 +65,17 @@ class AdminUserDetailScreen extends StatelessWidget {
                 margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 child: ListTile(
-                  leading: Icon(Icons.description_outlined, color: Theme.of(context).primaryColor),
+                  leading: Icon(_getIconForFileType(doc.name), color: Theme.of(context).primaryColor),
                   title: Text(doc.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text('Category: ${doc.category}'),
-                  trailing: Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.grey.shade600),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Category: ${doc.category}'),
+                      const SizedBox(height: 4),
+                      Text('Uploaded: ${DateFormat.yMMMd().add_jm().format(doc.uploadedDate)}'),
+                    ],
+                  ),
+                  trailing: StatusBadge(status: doc.status),
                   onTap: () {
                     Navigator.push(
                       context,

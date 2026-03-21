@@ -24,7 +24,7 @@ class _FacultyVerifyTabState extends State<FacultyVerifyTab> {
       );
       return;
     }
-    final isPdf = url.toLowerCase().endsWith('.pdf');
+    final isPdf = url.toLowerCase().split('?').first.endsWith('.pdf');
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -152,7 +152,7 @@ class _FacultyVerifyTabState extends State<FacultyVerifyTab> {
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('documents')
-            .where('status', whereIn: ['pending', 'resubmission'])
+            .where('status', isEqualTo: 'pending')
             .orderBy('uploaded_at', descending: true)
             .snapshots(),
         builder: (context, snapshot) {

@@ -162,28 +162,65 @@ class _AdminCategoriesTabState extends State<AdminCategoriesTab> {
         .get();
 
     final bool isBeingUsed = result.docs.isNotEmpty;
+    final _forceDeleteController = TextEditingController();
 
-    String warningMessage = isBeingUsed
-        ? 'Warning: This category is in use by one or more documents. Deleting the category will not remove it from the documents. Are you sure you want to proceed?'
-        : 'Are you sure you want to permanently delete the category "$categoryName"?';
-
-    final bool? confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Confirm Deletion'),
-        content: Text(warningMessage),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+    if (isBeingUsed) {
+      final bool? confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Confirm Deletion'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Warning: This category is in use by one or more documents. Deleting the category will not remove it from the documents. Are you sure you want to proceed?'),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _forceDeleteController,
+                decoration: const InputDecoration(
+                  labelText: 'Type the category name to confirm',
+                ),
+              )
+            ],
           ),
-        ],
-      ),
-    );
+          actions: [
+            TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: const Text('Cancel')),
+            TextButton(
+              onPressed: () {
+                if (_forceDeleteController.text == categoryName) {
+                  Navigator.of(dialogContext).pop(true);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Category name does not match.'), backgroundColor: Colors.red),
+                  );
+                }
+              },
+              child: const Text('Force Delete (Not Recommended)', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        ),
+      );
+      if (confirmed == true) {
+        _deleteCategory(categoryId, categoryName);
+      }
+    } else {
+        final bool? confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Confirm Deletion'),
+          content: Text('Are you sure you want to permanently delete the category "$categoryName"?'),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: const Text('Cancel')),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        ),
+      );
 
-    if (confirmed == true) {
-      _deleteCategory(categoryId, categoryName);
+      if (confirmed == true) {
+        _deleteCategory(categoryId, categoryName);
+      }
     }
   }
 
