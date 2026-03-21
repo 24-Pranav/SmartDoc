@@ -35,6 +35,7 @@ class _FacultyHomeTabState extends State<FacultyHomeTab> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Student Directory'),
+        centerTitle: true,
       ),
       body: Column(
         children: [

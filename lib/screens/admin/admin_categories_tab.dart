@@ -17,6 +17,7 @@ class _AdminCategoriesTabState extends State<AdminCategoriesTab> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Manage Categories'),
+        centerTitle: true,
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: _firestore.collection('categories').snapshots(),

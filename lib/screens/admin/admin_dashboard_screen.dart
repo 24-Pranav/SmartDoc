@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:smart_doc/providers/user_provider.dart';
 import 'package:smart_doc/screens/admin/admin_profile_tab.dart';
 import 'package:smart_doc/screens/admin/admin_users_tab.dart';
 import 'package:smart_doc/screens/admin/admin_verification_tab.dart';
-import 'package:smart_doc/widgets/custom_app_bar.dart';
 import 'package:smart_doc/widgets/custom_bottom_nav_bar.dart';
 import 'admin_home_tab.dart';
 
@@ -32,40 +29,50 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     const AdminProfileTab(),
   ];
 
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    final user = Provider.of<UserProvider>(context).user;
-    return Scaffold(
-      appBar: CustomAppBar(
-        title: 'Welcome, ${user?.name ?? 'Admin'}!',
-        showLogout: true,
-      ),
-      body: _widgetOptions.elementAt(_selectedIndex),
-      bottomNavigationBar: CustomBottomNavBar(
-        selectedIndex: _selectedIndex,
-        onItemTapped: (index) {
+    return PopScope(
+      canPop: _selectedIndex == 0,
+      onPopInvoked: (bool didPop) {
+        if (didPop) {
+          return;
+        }
+        if (_selectedIndex != 0) {
           setState(() {
-            _selectedIndex = index;
+            _selectedIndex = 0;
           });
-        },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people),
-            label: 'Users',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.verified),
-            label: 'Verification',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
+        }
+      },
+      child: Scaffold(
+        body: _widgetOptions.elementAt(_selectedIndex),
+        bottomNavigationBar: CustomBottomNavBar(
+          selectedIndex: _selectedIndex,
+          onItemTapped: _onItemTapped,
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home),
+              label: 'Home',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.people),
+              label: 'Users',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.verified),
+              label: 'Verification',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person),
+              label: 'Profile',
+            ),
+          ],
+        ),
       ),
     );
   }

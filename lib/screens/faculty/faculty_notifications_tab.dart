@@ -59,6 +59,7 @@ class _FacultyNotificationsTabState extends State<FacultyNotificationsTab> {
       // ADDED: AppBar for better UI consistency
       appBar: AppBar(
         title: const Text('Sent Notifications'),
+        centerTitle: true,
         automaticallyImplyLeading: false,
       ),
       body: StreamBuilder<QuerySnapshot>(
