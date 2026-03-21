@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_doc/providers/user_provider.dart';
-import 'package:smart_doc/screens/admin/admin_categories_tab.dart';
 import 'package:smart_doc/screens/role_selection_screen.dart';
 
 import '../../widgets/custom_bottom_nav_bar.dart';
@@ -23,7 +22,6 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
   final List<Widget> _widgetOptions = <Widget>[
     const FacultyHomeTab(),
     const FacultyVerifyTab(),
-    const AdminCategoriesTab(), // Assuming this is intentional for faculty
     const FacultyNotificationsTab(),
     const FacultyProfileTab(),
   ];
@@ -68,11 +66,6 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
               icon: Icon(Icons.verified_outlined),
               activeIcon: Icon(Icons.verified),
               label: 'Verify',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.category_outlined),
-              activeIcon: Icon(Icons.category),
-              label: 'Categories',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.notifications_outlined),

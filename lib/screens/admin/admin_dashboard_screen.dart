@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:smart_doc/screens/admin/admin_categories_tab.dart';
 import 'package:smart_doc/screens/admin/admin_profile_tab.dart';
 import 'package:smart_doc/screens/admin/admin_users_tab.dart';
 import 'package:smart_doc/screens/admin/admin_verification_tab.dart';
@@ -27,6 +28,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     const AdminHomeTab(),
     const AdminUsersTab(),
     const AdminVerificationTab(),
+    const AdminCategoriesTab(), // Added Categories Tab
     const AdminProfileTab(),
   ];
 
@@ -72,6 +74,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             BottomNavigationBarItem(
               icon: Icon(Icons.verified),
               label: 'Verification',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.category), // Added Categories Icon
+              label: 'Categories', // Added Categories Label
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.person),

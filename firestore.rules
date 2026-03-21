@@ -57,7 +57,7 @@ service cloud.firestore {
         // A faculty member can ONLY update fields related to verification.
         (isRole('faculty') &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            'status', 'comments', 'isArchived', 'verified_by', 'verified_at', 'verified_by_user_id', 'verification_date'
+            'status', 'comments', 'isArchived', 'verified_by', 'verified_at', 'verified_by_user_id', 'verification_date', 'faculty_status', 'faculty_comment', 'timeline'
           ]));
     }
 

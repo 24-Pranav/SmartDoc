@@ -16,7 +16,6 @@ class FacultyVerifyTab extends StatefulWidget {
 
 class _FacultyVerifyTabState extends State<FacultyVerifyTab> {
 
-  // Shows the document preview (unchanged).
   void _showDocumentDialog(BuildContext context, Document doc) {
     final url = doc.url;
     if (url == null || url.isEmpty) {
@@ -59,11 +58,23 @@ class _FacultyVerifyTabState extends State<FacultyVerifyTab> {
     );
   }
 
-  // Shows student details (unchanged).
-  Future<void> _showStudentDetails(BuildContext context, String studentId) async { // ... (implementation is unchanged) ...
+  Future<void> _showStudentDetails(BuildContext context, String studentId) async {
+    try {
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(studentId).get();
+      if (!userDoc.exists || userDoc.data() == null) {
+        if (mounted) showMessageBox(context, 'Not Found', 'Could not find details for this student.');
+        return;
+      }
+      final student = model.User.fromFirestore(userDoc.data()!, userDoc.id);
+      if (mounted) {
+        showMessageBox(context, 'Student Details', 'Name: ${student.name}\nEmail: ${student.email}');
+      }
+    } catch (e) {
+      if (mounted) showMessageBox(context, 'Error', 'Failed to fetch student details: $e');
+    }
   }
 
-  // NEW: Shows a dialog for faculty to enter comments before approving/rejecting.
+
   Future<void> _showReviewDialog(BuildContext context, Document document, DocumentStatus newStatus) async {
     final commentController = TextEditingController();
     final actionText = newStatus.name.capitalize();
@@ -99,7 +110,6 @@ class _FacultyVerifyTabState extends State<FacultyVerifyTab> {
     }
   }
 
-  // UPDATED: Now accepts a comment and writes all new fields to Firestore.
   Future<void> _updateDocumentStatus(Document document, DocumentStatus newStatus, String comment) async {
     final facultyUser = FirebaseAuth.instance.currentUser;
     if (facultyUser == null) {
@@ -110,23 +120,20 @@ class _FacultyVerifyTabState extends State<FacultyVerifyTab> {
     try {
       final docRef = FirebaseFirestore.instance.collection('documents').doc(document.id);
       
-      // Create the new timeline event.
       final newTimelineEvent = TimelineEvent(
         status: "Faculty Review - ${newStatus.name.capitalize()}",
         timestamp: DateTime.now(),
         comment: comment,
       );
 
-      // Prepare the data for Firestore update, including the new comment and timeline event.
-      await docRef.update({
+      await docRef.set({
         'status': newStatus.name,
         'faculty_status': newStatus.name,
         'faculty_comment': comment,
         'verified_by_user_id': facultyUser.uid,
         'verification_date': FieldValue.serverTimestamp(),
-        // Atomically add the new event to the timeline array.
         'timeline': FieldValue.arrayUnion([newTimelineEvent.toMap()]),
-      });
+      }, SetOptions(merge: true));
 
       if (mounted) {
         showMessageBox(context, 'Success', 'Document has been ${newStatus.name}.');
@@ -145,7 +152,7 @@ class _FacultyVerifyTabState extends State<FacultyVerifyTab> {
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('documents')
-            .where('status', whereIn: ['pending', 'resubmission']) // Also fetch docs needing re-review.
+            .where('status', whereIn: ['pending', 'resubmission'])
             .orderBy('uploaded_at', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
@@ -194,7 +201,21 @@ class _FacultyVerifyTabState extends State<FacultyVerifyTab> {
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          if (document.aiStatus != null)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 12.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('AI Verification:', style: TextStyle(fontWeight: FontWeight.bold)),
+                                  Text('Status: ${document.aiStatus!.name.capitalize()}'),
+                                  if (document.aiComment != null && document.aiComment!.isNotEmpty)
+                                    Text('Comment: ${document.aiComment}'),
+                                ],
+                              ),
+                            ),
                           Center(
                             child: FilledButton.tonal(
                               onPressed: () => _showDocumentDialog(context, document),
@@ -202,21 +223,29 @@ class _FacultyVerifyTabState extends State<FacultyVerifyTab> {
                             ),
                           ),
                           const Divider(height: 20),
-                          // UPDATED: Buttons now call the review dialog.
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          // **FIX: Replaced Row with Wrap to prevent overflow**
+                          Wrap(
+                            alignment: WrapAlignment.spaceEvenly,
+                            spacing: 8.0, // Horizontal space between buttons
+                            runSpacing: 8.0, // Vertical space if buttons wrap
                             children: [
                               ElevatedButton.icon(
                                 icon: const Icon(Icons.check_circle_outline),
                                 label: const Text('Approve'),
                                 onPressed: () => _showReviewDialog(context, document, DocumentStatus.approved),
-                                style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                                style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
                               ),
-                              TextButton.icon(
+                              ElevatedButton.icon(
+                                icon: const Icon(Icons.history, size: 18),
+                                label: const Text('Resubmit'),
+                                onPressed: () => _showReviewDialog(context, document, DocumentStatus.resubmission),
+                                style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white),
+                              ),
+                              ElevatedButton.icon(
                                 icon: const Icon(Icons.cancel_outlined),
                                 label: const Text('Reject'),
                                 onPressed: () => _showReviewDialog(context, document, DocumentStatus.rejected),
-                                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                                style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
                               ),
                             ],
                           ),

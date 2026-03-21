@@ -3,52 +3,85 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:smart_doc/models/document.dart';
+import 'package:smart_doc/screens/admin/admin_user_detail_screen.dart';
+import 'package:smart_doc/models/user.dart' as model;
+import 'package:smart_doc/widgets/custom_app_bar.dart';
 
 class AdminHomeTab extends StatelessWidget {
   const AdminHomeTab({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<Map<String, dynamic>>(
-      future: _getDashboardData(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
-        }
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const Center(child: Text('No data available'));
-        }
+    return Scaffold(
+      appBar: const CustomAppBar(title: 'Admin Dashboard'),
+      body: FutureBuilder<Map<String, dynamic>>(
+        future: _getDashboardData(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Center(child: Text('No data available'));
+          }
 
-        final data = snapshot.data!;
-        final int studentCount = data['studentCount'];
-        final int facultyCount = data['facultyCount'];
-        final int pendingVerifications = data['pendingVerifications'];
-        final Map<DocumentStatus, int> statusCounts = data['statusCounts'];
-        final Map<String, int> uploadsByDay = data['uploadsByDay'];
-        final Map<String, int> categoryCounts = data['categoryCounts'];
+          final data = snapshot.data!;
+          final int studentCount = data['studentCount'];
+          final int facultyCount = data['facultyCount'];
+          final int pendingVerifications = data['pendingVerifications'];
+          final Map<DocumentStatus, int> statusCounts = data['statusCounts'];
+          final Map<String, int> uploadsByDay = data['uploadsByDay'];
+          final Map<String, int> categoryCounts = data['categoryCounts'];
+          final List<Document> overdueDocuments = data['overdueDocuments'];
 
-
-        return _buildDashboard(context, studentCount, facultyCount,
-            pendingVerifications, statusCounts, uploadsByDay, categoryCounts);
-      },
+          return _buildDashboard(
+            context,
+            studentCount,
+            facultyCount,
+            pendingVerifications,
+            statusCounts,
+            uploadsByDay,
+            categoryCounts,
+            overdueDocuments, 
+          );
+        },
+      ),
     );
   }
 
   Future<Map<String, dynamic>> _getDashboardData() async {
     final usersQuery = FirebaseFirestore.instance.collection('users').get();
+    final facultyQuery = FirebaseFirestore.instance.collection('faculty').get();
     final documentsQuery = FirebaseFirestore.instance.collection('documents').get();
+    final overdueDocumentsQuery = FirebaseFirestore.instance
+        .collection('documents')
+        .where('status', isEqualTo: 'pending')
+        .where('uploaded_at', isLessThan: DateTime.now().subtract(const Duration(hours: 48)))
+        .get();
 
-    final results = await Future.wait([usersQuery, documentsQuery]);
+    final results = await Future.wait([usersQuery, facultyQuery, documentsQuery, overdueDocumentsQuery]);
 
-    final userDocs = results[0].docs;
-    final studentCount = userDocs.where((doc) => doc.data()['role'] == 'student').length;
-    final facultyCount = userDocs.where((doc) => doc.data()['role'] == 'faculty').length;
-    final pendingVerifications = userDocs.where((doc) => doc.data()['role'] == 'faculty' && doc.data()['isVerified'] == false).length;
+    final userDocs = (results[0] as QuerySnapshot).docs;
+    final facultyDocs = (results[1] as QuerySnapshot).docs;
 
-    final documents = (results[1] as QuerySnapshot)
+    final studentCount = userDocs.where((doc) {
+      final data = doc.data() as Map<String, dynamic>?;
+      return data != null && data['role'] == 'student';
+    }).length;
+
+    final facultyCount = facultyDocs.where((doc) {
+      final data = doc.data() as Map<String, dynamic>?;
+      return data != null && data['status'] == 'approved';
+    }).length;
+
+    final pendingVerifications = facultyDocs.where((doc) {
+      final data = doc.data() as Map<String, dynamic>?;
+      return data != null && data['status'] == 'pending';
+    }).length;
+
+    final documents = (results[2] as QuerySnapshot)
         .docs
         .map((doc) => Document.fromFirestore(doc.data() as Map<String, dynamic>, doc.id))
         .toList();
@@ -57,6 +90,11 @@ class AdminHomeTab extends StatelessWidget {
     final uploadsByDay = _getUploadsByDay(documents);
     final categoryCounts = _getCategoryCounts(documents);
 
+    final overdueDocuments = (results[3] as QuerySnapshot)
+        .docs
+        .map((doc) => Document.fromFirestore(doc.data() as Map<String, dynamic>, doc.id))
+        .toList();
+
     return {
       'studentCount': studentCount,
       'facultyCount': facultyCount,
@@ -64,6 +102,7 @@ class AdminHomeTab extends StatelessWidget {
       'statusCounts': statusCounts,
       'uploadsByDay': uploadsByDay,
       'categoryCounts': categoryCounts,
+      'overdueDocuments': overdueDocuments,
     };
   }
 
@@ -84,7 +123,7 @@ class AdminHomeTab extends StatelessWidget {
     final today = DateTime.now();
     for (int i = 6; i >= 0; i--) {
       final date = today.subtract(Duration(days: i));
-      final dayKey = DateFormat('EEE').format(date); // e.g., 'Mon'
+      final dayKey = DateFormat('EEE').format(date);
       uploads[dayKey] = 0;
     }
 
@@ -107,7 +146,6 @@ class AdminHomeTab extends StatelessWidget {
     return counts;
   }
 
-
   Widget _buildDashboard(
     BuildContext context,
     int studentCount,
@@ -116,16 +154,15 @@ class AdminHomeTab extends StatelessWidget {
     Map<DocumentStatus, int> statusCounts,
     Map<String, int> uploadsByDay,
     Map<String, int> categoryCounts,
+    List<Document> overdueDocuments,
   ) {
     return ListView(
       padding: const EdgeInsets.all(16.0),
       children: [
-        const Text(
-          'Admin Dashboard',
-          style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 24),
         _buildMetricCards(studentCount, facultyCount, pendingVerifications),
+        const SizedBox(height: 24),
+        if (overdueDocuments.isNotEmpty)
+          _buildOverdueDocumentsCard(context, overdueDocuments),
         const SizedBox(height: 24),
         _buildStatusPieChartCard(context, statusCounts),
         const SizedBox(height: 24),
@@ -149,6 +186,48 @@ class AdminHomeTab extends StatelessWidget {
         _buildMetricCard('Pending Verifications',
             pendingVerifications.toString(), Icons.hourglass_top, Colors.orange),
       ],
+    );
+  }
+
+  Widget _buildOverdueDocumentsCard(BuildContext context, List<Document> documents) {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      color: Colors.red.shade50,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Global Pending Review (> 48 Hours)',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red.shade800,
+                  ),
+            ),
+            const SizedBox(height: 16),
+            ...documents.map((doc) => ListTile(
+                  leading: const Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                  title: Text(doc.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text('Student: ${doc.studentName} | Uploaded: ${DateFormat.yMd().add_jm().format(doc.uploadedDate)}'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () async {
+                    final userDoc = await FirebaseFirestore.instance.collection('users').doc(doc.studentId).get();
+                    if (userDoc.exists) {
+                      final student = model.User.fromFirestore(userDoc.data()!, userDoc.id);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AdminUserDetailScreen(user: student),
+                        ),
+                      );
+                    }
+                  },
+                )),
+          ],
+        ),
+      ),
     );
   }
 
@@ -265,7 +344,7 @@ class AdminHomeTab extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-             Text('Recent Uploads (Last 7 Days)',
+            Text('Recent Uploads (Last 7 Days)',
                 style: Theme.of(context)
                     .textTheme
                     .titleLarge
@@ -279,16 +358,15 @@ class AdminHomeTab extends StatelessWidget {
                   maxY: (uploadsByDay.values.isEmpty ? 0 : uploadsByDay.values.reduce((a, b) => a > b ? a : b)) * 1.2,
                   barTouchData: BarTouchData(enabled: false),
                   titlesData: FlTitlesData(
-                     leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                     topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                     bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, getTitlesWidget: (value, meta) {
+                      leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, getTitlesWidget: (value, meta) {
                         final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
                         if (value.toInt() >= 0 && value.toInt() < days.length) {
                           return Text(days[value.toInt()]);
                         }
                         return const Text('');
-                     }))
-                  ),
+                      }))),
                   gridData: const FlGridData(show: false),
                   borderData: FlBorderData(show: false),
                   barGroups: barGroups,
@@ -301,7 +379,7 @@ class AdminHomeTab extends StatelessWidget {
     );
   }
 
-   Widget _buildCategoryPieChartCard(BuildContext context, Map<String, int> categoryCounts) {
+  Widget _buildCategoryPieChartCard(BuildContext context, Map<String, int> categoryCounts) {
     final List<PieChartSectionData> sections = categoryCounts.entries.map((entry) {
       return PieChartSectionData(
         color: _getColorForCategory(entry.key),
@@ -333,7 +411,7 @@ class AdminHomeTab extends StatelessWidget {
                 ),
               ),
             ),
-             const SizedBox(height: 24),
+            const SizedBox(height: 24),
             _buildCategoryLegend(categoryCounts),
           ],
         ),
@@ -341,7 +419,7 @@ class AdminHomeTab extends StatelessWidget {
     );
   }
 
-   Widget _buildCategoryLegend(Map<String, int> categoryCounts) {
+  Widget _buildCategoryLegend(Map<String, int> categoryCounts) {
     return Wrap(
       spacing: 16,
       runSpacing: 8,
@@ -354,8 +432,7 @@ class AdminHomeTab extends StatelessWidget {
     );
   }
 
-    Color _getColorForCategory(String category) {
-    // Simple hash to get a color for a category
+  Color _getColorForCategory(String category) {
     final hash = category.hashCode;
     return Color((hash & 0x00FFFFFF) | 0xFF000000);
   }

@@ -5,6 +5,7 @@ import 'package:smart_doc/screens/role_selection_screen.dart';
 import 'package:smart_doc/screens/admin/admin_dashboard_screen.dart';
 import 'package:smart_doc/screens/faculty/faculty_dashboard_screen.dart';
 import 'package:smart_doc/screens/student/student_dashboard_screen.dart';
+import 'package:smart_doc/screens/faculty/faculty_waiting_screen.dart';
 
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
@@ -40,7 +41,6 @@ class AuthWrapper extends StatelessWidget {
                 );
               }
 
-              // Add robust error handling
               if (snapshots.hasError) {
                 return Scaffold(
                   body: Center(
@@ -49,13 +49,16 @@ class AuthWrapper extends StatelessWidget {
                 );
               }
               
-              if (!snapshots.hasData) {
+              if (!snapshots.hasData || !snapshots.data![0].exists) {
+                  // If user doc doesn't exist, they need to select a role.
                   return const RoleSelectionScreen();
               }
 
               final userSnapshot = snapshots.data![0];
               final facultySnapshot = snapshots.data![1];
 
+              // --- SECURITY GUARDRAIL ---
+              // 1. Check for Admin role FIRST. This overrides any other status.
               if (userSnapshot.exists && userSnapshot.data() != null) {
                 final userData = userSnapshot.data() as Map<String, dynamic>;
                 if (userData['role'] == 'admin') {
@@ -63,15 +66,27 @@ class AuthWrapper extends StatelessWidget {
                 } 
               }
 
+              // 2. If not an admin, check for Faculty status.
               if (facultySnapshot.exists) {
-                return const FacultyDashboardScreen();
-              } else if (userSnapshot.exists) {
-                return const StudentDashboardScreen();
-              } else {
-                // If the user is authenticated but has no role document,
-                // send them to role selection.
-                return const RoleSelectionScreen();
+                final facultyData = facultySnapshot.data() as Map<String, dynamic>;
+                if ((facultyData.containsKey('isVerified') && facultyData['isVerified'] == true) ||
+                    (facultyData.containsKey('status') && facultyData['status'] == 'approved')) {
+                  return const FacultyDashboardScreen();
+                } else {
+                  return const FacultyWaitingScreen();
+                }
+              } 
+              
+              // 3. If not admin or faculty, they must be a student.
+              if (userSnapshot.exists) {
+                 final userData = userSnapshot.data() as Map<String, dynamic>;
+                 if (userData['role'] == 'student') {
+                    return const StudentDashboardScreen();
+                 }
               }
+
+              // 4. Fallback: If user has no valid role, send to selection.
+              return const RoleSelectionScreen();
             },
           );
         } else {

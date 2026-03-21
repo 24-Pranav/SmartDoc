@@ -6,6 +6,9 @@ import 'package:smart_doc/widgets/status_badge.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:smart_doc/models/notification.dart' as notification_model;
+
 
 class StudentDocumentsScreen extends StatefulWidget {
   final model.User student;
@@ -117,11 +120,78 @@ class _StudentDocumentsScreenState extends State<StudentDocumentsScreen> {
     );
   }
 
+  void _showCommunicationHistory(BuildContext context) {
+    final facultyId = FirebaseAuth.instance.currentUser?.uid;
+    if (facultyId == null) {
+      // Handle case where faculty is not logged in
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Communication History'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('notifications')
+                  .where('target', isEqualTo: widget.student.id)
+                  .where('senderId', isEqualTo: facultyId)
+                  .orderBy('timestamp', descending: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return const Text('No communication history found.');
+                }
+
+                final notifications = snapshot.data!.docs.map((doc) {
+                  return notification_model.Notification.fromFirestore(doc.data() as Map<String, dynamic>, doc.id);
+                }).toList();
+
+                return ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: notifications.length,
+                  itemBuilder: (context, index) {
+                    final notification = notifications[index];
+                    final timestamp = notification.timestamp as Timestamp;
+                    return ListTile(
+                      title: Text(notification.title),
+                      subtitle: Text(notification.message),
+                      trailing: Text(TimeAgo.timeAgoSinceDate(timestamp.toDate())),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text("${widget.student.name ?? 'Student'}'s Documents"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.history),
+            tooltip: 'Communication History',
+            onPressed: () => _showCommunicationHistory(context),
+          ),
+        ],
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
@@ -169,5 +239,26 @@ class _StudentDocumentsScreenState extends State<StudentDocumentsScreen> {
         },
       ),
     );
+  }
+}
+
+class TimeAgo {
+  static String timeAgoSinceDate(DateTime date, {bool numericDates = true}) {
+    final date2 = DateTime.now();
+    final difference = date2.difference(date);
+
+    if (difference.inSeconds < 5) {
+      return 'Just now';
+    } else if (difference.inSeconds < 60) {
+      return '${difference.inSeconds} seconds ago';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes} minutes ago';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours} hours ago';
+    } else if (difference.inDays == 1) {
+      return (numericDates) ? '1 day ago' : 'Yesterday';
+    } else {
+      return '${difference.inDays} days ago';
+    }
   }
 }

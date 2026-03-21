@@ -1,61 +1,29 @@
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
-
-// Represents a single document from Firestore
-class Document {
-  final String id;
-  final String fileName;
-  final String fileUrl;
-  final Timestamp timestamp;
-
-  Document({required this.id, required this.fileName, required this.fileUrl, required this.timestamp});
-
-  factory Document.fromFirestore(DocumentSnapshot doc) {
-    Map data = doc.data() as Map<String, dynamic>;
-    return Document(
-      id: doc.id,
-      fileName: data['fileName'] ?? 'Unnamed File',
-      fileUrl: data['fileUrl'] ?? '',
-      timestamp: data['timestamp'] ?? Timestamp.now(),
-    );
-  }
-}
+import 'package:smart_doc/models/document.dart';
+import 'package:smart_doc/models/user.dart' as model;
+import 'package:smart_doc/screens/student/document_detail_screen.dart';
 
 class AdminUserDetailScreen extends StatelessWidget {
-  final String userId;
-  final String userName;
+  final model.User user;
 
-  const AdminUserDetailScreen({super.key, required this.userId, required this.userName});
-
-  // Function to open the document URL
-  void _launchURL(String url) async {
-    final Uri uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
-      // Could show a snackbar here with an error
-      throw 'Could not launch $url';
-    }
-  }
+  const AdminUserDetailScreen({super.key, required this.user});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("$userName's Documents"),
+        title: Text("${user.name ?? 'User'}'s Documents"),
       ),
       body: StreamBuilder<QuerySnapshot>(
-        // Query the 'documents' collection for docs matching the userId
         stream: FirebaseFirestore.instance
             .collection('documents')
-            .where('userId', isEqualTo: userId)
-            .orderBy('timestamp', descending: true)
+            .where('studentId', isEqualTo: user.id)
+            .orderBy('uploaded_at', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return const Center(child: Text('Error loading documents.'));
+            return const Center(child: Text('Error loading documents. Please ensure Firestore indexes are configured.'));
           }
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -69,27 +37,31 @@ class AdminUserDetailScreen extends StatelessWidget {
             );
           }
 
-          final documents = snapshot.data!.docs.map((doc) => Document.fromFirestore(doc)).toList();
+          final documents = snapshot.data!.docs
+              .map((doc) => Document.fromFirestore(doc.data() as Map<String, dynamic>, doc.id))
+              .toList();
 
           return ListView.builder(
+            padding: const EdgeInsets.all(8.0),
             itemCount: documents.length,
             itemBuilder: (context, index) {
               final doc = documents[index];
               return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                elevation: 2,
+                margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 child: ListTile(
-                  leading: const Icon(Icons.description),
-                  title: Text(doc.fileName),
-                  subtitle: Text('Uploaded on: ${doc.timestamp.toDate().toLocal()}'),
-                  trailing: const Icon(Icons.open_in_new),
+                  leading: Icon(Icons.description_outlined, color: Theme.of(context).primaryColor),
+                  title: Text(doc.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text('Category: ${doc.category}'),
+                  trailing: Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.grey.shade600),
                   onTap: () {
-                    if (doc.fileUrl.isNotEmpty) {
-                      _launchURL(doc.fileUrl);
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('File URL is not available.')),
-                      );
-                    }
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => DocumentDetailScreen(document: doc),
+                      ),
+                    );
                   },
                 ),
               );
