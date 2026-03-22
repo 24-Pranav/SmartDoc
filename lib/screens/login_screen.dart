@@ -67,11 +67,11 @@ class _LoginScreenState extends State<LoginScreen> {
       final userFromAuth = userCredential.user;
 
       if (userFromAuth == null) {
-          throw Exception('Could not sign in. Please try again.');
+        throw Exception('Could not sign in. Please try again.');
       }
 
       final String roleString = widget.role.toString().split('.').last;
-      
+
       if (widget.role == Role.faculty) {
         final DocumentSnapshot facultyDoc = await _firestore.collection('faculty').doc(userFromAuth.uid).get();
 
@@ -102,14 +102,14 @@ class _LoginScreenState extends State<LoginScreen> {
             Navigator.pushAndRemoveUntil(
               context,
               MaterialPageRoute(builder: (context) => const AuthWrapper()),
-              (Route<dynamic> route) => false,
+                  (Route<dynamic> route) => false,
             );
           }
         } else {
           await _auth.signOut();
           throw Exception('Your registration has been denied or an error occurred.');
         }
-      } else { 
+      } else {
         final DocumentSnapshot userDoc = await _firestore.collection('users').doc(userFromAuth.uid).get();
 
         if (!userDoc.exists) {
@@ -118,11 +118,11 @@ class _LoginScreenState extends State<LoginScreen> {
         }
 
         final user = model.User.fromFirestore(userDoc.data() as Map<String, dynamic>, userDoc.id);
-        
-        if (user.role != roleString) {
+
+        // *** BACKWARD COMPATIBILITY FIX ***
+        // Allow login if the role in the database is empty, but throw an error if it exists and doesn't match.
+        if (user.role.isNotEmpty && user.role != roleString) {
           await _auth.signOut();
-          // *** SYNTAX FIX IS HERE ***
-          // Correctly formatted the error string to resolve the parsing error.
           throw Exception('Login failed. You are trying to log in as a $roleString, but your account is a ${user.role} account. Please go back and select the correct role.');
         } else {
           if (mounted) {
@@ -130,7 +130,7 @@ class _LoginScreenState extends State<LoginScreen> {
             Navigator.pushAndRemoveUntil(
               context,
               MaterialPageRoute(builder: (context) => const AuthWrapper()),
-              (Route<dynamic> route) => false,
+                  (Route<dynamic> route) => false,
             );
           }
         }
@@ -219,71 +219,71 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildLoginForm() {
     return Column(
       children: [
-        TextFormField(
-          controller: _emailController,
-          keyboardType: TextInputType.emailAddress,
-          decoration: InputDecoration(
-            labelText: 'Email',
-            hintText: 'user@college.edu',
-            prefixIcon: const Icon(Icons.email_outlined),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12.0),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12.0),
-              borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2.0),
-            ),
-          ),
+      TextFormField(
+      controller: _emailController,
+      keyboardType: TextInputType.emailAddress,
+      decoration: InputDecoration(
+        labelText: 'Email',
+        hintText: 'user@college.edu',
+        prefixIcon: const Icon(Icons.email_outlined),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.0),
         ),
-        const SizedBox(height: 16.0),
-        TextFormField(
-          controller: _passwordController,
-          obscureText: !_isPasswordVisible,
-          decoration: InputDecoration(
-            labelText: 'Password',
-            hintText: 'password',
-            prefixIcon: const Icon(Icons.lock_outline),
-            suffixIcon: IconButton(
-              icon: Icon(
-                _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
-              ),
-              onPressed: () {
-                setState(() {
-                  _isPasswordVisible = !_isPasswordVisible;
-                });
-              },
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12.0),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12.0),
-              borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2.0),
-            ),
-          ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.0),
+          borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2.0),
         ),
-        const SizedBox(height: 24.0),
-        _isLoading
-            ? const CircularProgressIndicator()
-            : SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _login,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).primaryColor,
-                    padding: const EdgeInsets.symmetric(vertical: 16.0),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12.0),
-                    ),
-                    elevation: 5,
-                  ),
-                  child: const Text(
-                    'Login',
-                    style: TextStyle(fontSize: 18, color: Colors.white),
-                  ),
-                ),
-              ),
-      ],
+      ),
+    ),
+    const SizedBox(height: 16.0),
+    TextFormField(
+    controller: _passwordController,
+    obscureText: !_isPasswordVisible,
+    decoration: InputDecoration(
+    labelText: 'Password',
+    hintText: 'password',
+    prefixIcon: const Icon(Icons.lock_outline),
+    suffixIcon: IconButton(
+    icon: Icon(
+    _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+    ),
+    onPressed: () {
+    setState(() {
+    _isPasswordVisible = !_isPasswordVisible;
+    });
+    },
+    ),
+    border: OutlineInputBorder(
+    borderRadius: BorderRadius.circular(12.0),
+    ),
+    focusedBorder: OutlineInputBorder(
+    borderRadius: BorderRadius.circular(12.0),
+    borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2.0),
+    ),
+    ),
+    ),
+    const SizedBox(height: 24.0),
+    _isLoading
+    ? const CircularProgressIndicator()
+        : SizedBox(
+    width: double.infinity,
+    child: ElevatedButton(
+    onPressed: _login,
+    style: ElevatedButton.styleFrom(
+    backgroundColor: Theme.of(context).primaryColor,
+    padding: const EdgeInsets.symmetric(vertical: 16.0),
+    shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(12.0),
+    ),
+    elevation: 5,
+    ),
+    child: const Text(
+    'Login',
+    style: TextStyle(fontSize: 18, color: Colors.white),
+    ),
+    ),
+    ),
+    ],
     );
   }
 
@@ -313,7 +313,7 @@ class _LoginScreenState extends State<LoginScreen> {
               context,
               MaterialPageRoute(
                   builder: (context) =>
-                      const FacultyRegistrationScreen()),
+                  const FacultyRegistrationScreen()),
             );
           }),
       ],
