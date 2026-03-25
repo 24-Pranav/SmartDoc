@@ -1,15 +1,27 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 
+        REQUIRED PERMISSIONS: Internet and Camera are core to the app's function.
+    -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.CAMERA"/>
+
+    <!-- 
+        WARNING: The following storage permissions are broad and may lead to Google Play Store rejection.
+        Review if your app truly needs to read/write from all external storage. 
+        If your app only saves to its own directory, you may be able to remove these.
+    -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29"/>
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
 
+    <!-- 
+        The `usesCleartextTraffic` attribute has been removed for security. 
+        All network traffic should use encrypted HTTPS.
+    -->
     <application
         android:label="SmartDoc"
         android:name="${applicationName}"
-        android:icon="@mipmap/launcher_icon"
-        android:usesCleartextTraffic="true">
+        android:icon="@mipmap/launcher_icon">
         <activity
             android:name=".MainActivity"
             android:exported="true"
