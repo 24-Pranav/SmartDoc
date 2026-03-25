@@ -1,12 +1,42 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+
+# IntelliJ
+.idea/
+
 # Flutter
+build/
 .flutter-plugins
 .flutter-plugins-dependencies
 .packages
+.pub-cache/
+
+# Dart
 .dart_tool/
 
-# IDEs
-.idea/
-.vscode/
+# Android
+/android/app/src/main/assets/flutter_assets/
+/android/app/build/
+/android/build/
+/android/.gradle/
+/android/app/src/main/java/io/flutter/plugins/
 
-# Misc
-.env
+# iOS
+/ios/Flutter/App.framework
+/ios/Flutter/engine.xcconfig
+/ios/Flutter/pod_install.log
+/ios/Pods/
+/ios/Runner/GeneratedPluginRegistrant.h
+/ios/Runner/GeneratedPluginRegistrant.m
+/ios/Runner.xcworkspace/contents.xcworkspacedata
+/ios/Runner.xcworkspace/xcshareddata/
+/ios/Runner.xcodeproj/project.xcworkspace/
+/ios/Runner.xcodeproj/xcshareddata/
+/ios/Flutter/flutter_export_environment.sh
+
+# VS Code
+.vscode/
