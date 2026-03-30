@@ -17,7 +17,7 @@ The project follows a standard feature-based / role-based directory structure in
 | Feature | Technologies & Libraries Used | Implementation Details |
 | :--- | :--- | :--- |
 | **Authentication** | `firebase_auth`, `supabase_flutter` | Students and Faculty register via Firebase Email/Password Auth. The Firebase JWT token is synced with Supabase for unified session management (`_initializeSupabaseAuth` in `main.dart`). |
-| **Database & Storage** | `cloud_firestore`, `firebase_storage` | Firestore holds collections for `users`, `faculty`, `documents`, and `categories`. PDF/Image files are stored in Firebase Storage buckets. |
+| **Database & Storage** | `cloud_firestore`, `supabase_flutter` | Firestore holds collections for `users`, `faculty`, `documents`, and `categories`. PDF/Image files are uploaded and securely stored in Supabase Storage (`documents` bucket). |
 | **State Management** | `provider` | `UserProvider` wraps the app at the root level (`main.dart`), notifying descendant UI components of Auth changes and role shifts. |
 | **OCR (Text Extraction)** | `google_mlkit_text_recognition`, `syncfusion_flutter_pdf`, `pdfx` | Handled by `OcrService`. For images, it uses ML Kit directly. For PDFs, it attempts text extraction via `syncfusion`. If text is missing (scanned document), it converts the PDF to an image via `pdfx` and runs ML Kit OCR on it. |
 | **AI Verification** | `http`, Gemini API (Flash 2.5) | Implemented in `AIService`. Uses a prompt engineering approach. It passes OCR text, student name, and category to Gemini, expecting a JSON response (`{"status": "...", "comments": "..."}`) to automatically evaluate the document. |

@@ -19,7 +19,7 @@ The application supports three distinct user roles, each with tailored interface
 
 ## Technologies Used
 - **Frontend Engine**: Flutter (Dart)
-- **Backend & Database**: Firebase (Authentication, Firestore, Storage, Cloud Messaging) and Supabase
+- **Backend & Database**: Firebase (Authentication, Firestore, Cloud Messaging) and Supabase (File Storage)
 - **State Management**: Provider
 - **Artificial Intelligence**: Gemini API (Flash 2.5), Google ML Kit (Text Recognition, Document Scanner)
 - **UI & UX**: Curved Navigation Bar, Lottie animations, Syncfusion PDF Viewer
@@ -28,7 +28,7 @@ The application supports three distinct user roles, each with tailored interface
 
 ### Prerequisites
 - Flutter SDK (>=3.0.0 <4.0.0)
-- Firebase Project setup with Authentication, Firestore, and Storage enabled.
+- Firebase Project setup with Authentication and Firestore enabled.
 - Gemini API Key.
 - Supabase Project setup.
 
